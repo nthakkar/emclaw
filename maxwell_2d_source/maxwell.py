@@ -8,9 +8,10 @@ import numpy as np
 # ======== all definitions are in m,s,g unit system.
 
 # ....... dimensions .............................................
-x_lower=0.e-6
-x_upper=500e-6					# lenght [m]
-
+x_lower = 0.9e-6
+x_upper = 500e-6					# lenght [m]
+y_lower = 0.0e-6
+y_upper = 1.0e-6 					# notice that for multilayer this is set later
 # ........ material properties ...................................
 
 # vacuum
@@ -19,7 +20,7 @@ mo = 4e-7*np.pi 				# vacuum peremeability  - [V.s/A.m]
 co = 1/np.sqrt(eo*mo)			# vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'interface'			# material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'multilayer'			# material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
 bkg_er = 1.5
@@ -32,21 +33,49 @@ bkg_m  = mo*bkg_mr
 x_change = x_upper/2
 
 # set moving refractive index parameters
-vrip_e 		= 0.0*co	# replace here the value of x
-vrip_m 		= vrip_e
+rip_vx_e 	= 0.0*co	# replace here the value of x
+rip_vx_m 	= vrip_x_e
+rip_vy_e	= 0.0*co
+rip_vy_m	= vrip_y_e
 
-xoff_rip_e 	= 10e-6
-xoff_rip_m 	= xoff_rip_e
+rip_xoff_e 	= 10e-6
+rip_xoff_m  = rip_xoff_e
+rip_yoff_e  = rip_xoff_e
+xoff_rip_m 	= rip_xoff_e
 
-sig_rip_e 	= 0.0e-6
-sig_rip_m	= sig_rip_e
-s_e 		= sig_rip_e**2
-s_m 		= sig_rip_m**2
+rip_xsig_e 	= 10.0e-6
+rip_xsim_m  = rip_xsig_e
+rip_ysim_e  = .9*y_upper/2
+rip_ysim_m  = rip_ysig_e
+s_x_e 		= rip_xsig_e**2
+s_x_m 		= rip_xsig_m**2
+s_y_e 		= rip_ysig_e**2
+s_y_m 		= rip_ysig_m**2
 
-prip 		= 0.0
+prip 		= 0.1
 deltan 		= prip*(bkg_n) # assumes epsilon = mu
 d_e 		= deltan #*(2.0*1.5+deltan)
 d_m 		= deltan #*(2.0*1.5+deltan)
+
+# set multilayer parameters
+
+# multilayered definition
+n_layers = 2
+layers = np.zeros([n_layers,7]) # _layer:  eps mu N t chi2e chi2m chi3e chi3m
+layers[0,0] = 1.5
+layers[0,1] = 1.5
+layers[0,2] = 10
+layers[0,3] = 15e-9
+layers[1,0] = 2.5
+layers[1,1] = 2.5
+layers[1,2] = layers[0,2] - 1
+layers[1,3] = 50e-9
+N_layers = 5
+if mat_shape=='multilayer':
+	y_upper = N_layers*np.sum(layers[:,3])+layers[0,3]
+	tlp = np.sum(layers[:,3])
+	mlp = np.floor(tlp/1e-9)
+
 
 # set non-linear parameters of the material
 chi2_e		= 0.0
@@ -56,31 +85,40 @@ chi3_m 		= 0.0
 
 # ........ excitation - initial conditoons .......................
 ex_type  = 'plane'
-alambda  = 1e-6 				# wavelength
-t_ex_sig = 1.0*alambda			# width in time (pulse only)
-x_ex_sig = 1.0*alambda			# width in the x-direction (pulse)
-toff_ex  = 0.0 					# offset in time
-xoff_ex	 = 0.02e-6   				# offset in the x-direction
+alambda  = 1e-6				# wavelength
+ex_t_sig = 1.0*alambda			# width in time (pulse only)
+ex_x_sig = 1.0*alambda			# width in the x-direction (pulse)
+ex_y_sig = y_upper-y_lower
+ex_toff  = 0.0 					# offset in time
+ex_xoff	 = 20e-9    			# offset in the x-direction
+ex_yoff	 = y_upper/2 			# offset in the y-direction
 omega 	 = 2.0*np.pi/alambda	# frequency
 k 		 = 2.0*np.pi*alambda
-amp_Ex	 = 1.0
-amp_Hy	 = 1.0
+amp_Ex	 = 0.
+amp_Ey	 = 1.
+amp_Hz	 = 1.
 
 # ........ pre-calculations for wave propagation .................
 v_r = 1./np.sqrt(bkg_e*bkg_m)
 v = co*v_r
-vx_ex = v
-kx_ex = k
+ex_vx = v
+ex_vy = 0.0
+ex_kx = k
+ex_ky = 0.0
 
 # Grid - mesh settings
-mx = np.floor(60*(x_upper-x_lower)/alambda)
+mx = np.floor(40*(x_upper-x_lower)/alambda)
+if mat_shape=='multilayer':
+	my = np.floor((y_upper-y_lower)/1e-9)
+else:
+	my = np.floor(20*(y_upper-y_lower)/alambda)
 
 # -------- GLOBAL FUNCTION DEFINITIONS --------------
 
 # refractive index map definition function 
-def etar(t,x):
+def etar(t,X,Y):
 	"""
-	eta = etar(t,x)
+	eta = etar(t,X,Y)
 
 	This function returns the refractive index map based on general definitions set earlier,
 	Gaussian cases support moving RIPs.
@@ -92,55 +130,127 @@ def etar(t,x):
          2: epsilon_t
          3: mu_t
 	"""
-
-	eta = np.empty( (4,len(x)), order='F')
+	y,x = np.meshgrid(Y,X)
+	eta = np.empty( [4,len(X),len(Y)], order='F')
 
 	if mat_shape=='gaussian1dx':
-		u_e = x - vrip_e*t - xoff_rip_e
-		u_m = x - vrip_m*t - xoff_rip_m
+		u_x_e = x - rip_vx_e*t - rip_xoff_e
+		u_x_m = x - rip_vx_m*t - rip_xoff_m
+		u_y_e = y - rip_vy_e*t - rip_yoff_e
+		u_y_m = y - rip_vy_m*t - rip_yoff_m
 
-		eta[0,:] = d_e*np.exp(-(u_e**2/s_e)) + bkg_er
-		eta[1,:] = d_m*np.exp(-(u_m**2/s_m)) + bkg_mr
+		u_e = (u_x_e/rip_xsig_e)**2 + (u_y_e/rip_ysig_e)**2
+		u_m = (u_x_m/rip_xsig_m)**2 + (u_y_m/rip_ysig_m)**2
+
+		u_e_t = 2*((rip_vx_e*u_x_e)/(rip_xsig_e**2) + (rip_vy_e*u_y_e)/(rip_ysig_e**2))
+		u_m_t = 2*((rip_vx_m*u_x_m)/(rip_xsig_m**2) + (rip_vy_m*u_y_m)/(rip_ysig_m**2))
+
+		eta[0,:,:] = d_e*np.exp(-u_e) + bkg_er
+		eta[1,:,:] = d_m*np.exp(-u_m) + bkg_mr
 		
-		eta[2,:] = ((2*vrip_e*u_e)*(d_e*np.exp(-(u_e**2/s_e))))/s_e
-		eta[3,:] = ((2*vrip_m*u_m)*(d_m*np.exp(-(u_m**2/s_m))))/s_m
+		eta[2,:,:] = u_e_t*d_e*np.exp(-u_e)
+		eta[3,:,:] = u_m_t*d_m*np.exp(-u_m)
 	elif mat_shape=='homogeneous':
-		eta[0,:] = bkg_er
-		eta[1,:] = bkg_mr
-		eta[2,:] = 0.
-		eta[3,:] = 0.
-	elif mat_shape=='interface':
-		eta[0,:] = 1*(x<x_change) + 4*(x>=x_change)
-		eta[1,:] = 1*(x<x_change) + 4*(x>=x_change)
-		eta[2,:] = 0.
-		eta[3,:] = 0.
+		eta[0,:,:] = bkg_er
+		eta[1,:,:] = bkg_mr
+		eta[2,:,:] = 0.
+		eta[3,:,:] = 0.
+	elif mat_shape=='interfacex':
+		eta[0,:,:] = 1*(x<x_change) + 4*(x>=x_change)
+		eta[1,:,:] = 1*(x<x_change) + 4*(x>=x_change)
+		eta[2,:,:] = 0.
+		eta[3,:,:] = 0.
+	elif mat_shape=='interfacey'
+		yy = y_upper-y_lower
+		eta[0,:,:] = 1*(y<yy/2) + 4*(x>=yy/2)
+		eta[1,:,:] = 1*(y<yy/2) + 4*(x>=yy/2)
+		eta[2,:,:] = 0.
+		eta[3,:,:] = 0.
+	elif mat_shape=='multilayer'
+		for n in range(0,N_layers)
+			yi = n*tlp
+			for m in range(0,n_layers)
+				if m==0:
+					eta[0,:,:] = layers[m,0]*(yi<y<=yi+layers[m,3])
+					eta[1,:,:] = layers[m,1]*(yi<y<=yi+layers[m,3])
+				else:
+					eta[0,:,:] = layers[m,0]*(yi+layers[m-1,3]<y<=yi+layers[m,3])
+					eta[1,:,:] = layers[m,1]*(yi+layers[m-1,3]<y<=yi+layers[m,3])
+
+
+		eta[0,:,:] = layers[0,0]*(N_layers*tlp<y<=N_layers*tlp+layers[0,3])
+		eta[1,:,:] = layers[0,1]*(N_layers*tlp<y<=N_layers*tlp+layers[0,3])
+		eta[2,:,:] = 0.0
+		eta[3,:,:] = 0.0	
 
 	return eta
 
 def update_aux(solver,state):
+	grid = state.grid
+	y = state.grid.y.centers
 	x = state.grid.x.centers
-	t = state.t
-#	oldaux = state.aux.copy(order='F')
-	state.aux = setaux(t,x)
-#   state.q = state.q*state.aux[0:2,:]/oldaux[0:2,:]
-	return state
-
+	td = state.t
+	state.aux = setaux(td,x,y)
+	
 #	next function might be redundant since it already exists as deltan	
-def setaux(t,x):
-	aux = np.empty( (4,len(x)), order='F')
-	aux[:,:] = etar(t,x)
+def setaux(t,x,y):
+	aux = np.empty( [2,len(y),len(x)], order='F')
+	aux = etar(t,x,y)
 	return aux
 
 def setaux_lower(state,dim,t,auxbc,num_ghost):
-	x = state.grid.x.centers_with_ghost(num_ghost)[:num_ghost]
-	auxbc[:,:num_ghost] = etar(t,x)
+	grid = state.grid
+	X = grid.x.centers_with_ghost(num_ghost)[:num_ghost]
+	Y = grid.y.centers_with_ghost(num_ghost)
+	tl = state.t
+	auxbc[:,:num_ghost,:] = etar(tl,X,Y)
 	return auxbc
 
 def setaux_upper(state,dim,t,auxbc,num_ghost):
-	x = state.grid.x.centers_with_ghost(num_ghost)[-num_ghost:]
-	auxbc[:,-num_ghost:] = etar(t,x)
+	grid = state.grid
+	X = grid.x.centers_with_ghost(num_ghost)[-num_ghost:]
+	Y = grid.y.centers_with_ghost(num_ghost)
+	tu = state.t
+	auxbc[:,-num_ghost:,:] = etar(tu,X,Y)
 	return auxbc
 
+def scattering_bc(state,dim,t,qbc,num_ghost):
+	"""
+	EM scattering boundary conditions with three components in  TM-mode Ex, Ey, Hz.
+	"""
+	grid = state.grid
+	X = grid.x.centers_with_ghost(num_ghost)[:num_ghost]
+	Y = grid.y.centers_with_ghost(num_ghost)
+	ts = state.t
+	y,x = np.meshgrid(Y,X)
+	t0 = 0.0
+	pulseshape = np.zeros( [len(X),len(Y)], order='F')
+	harmonic = np.zeros( [len(X),len(Y)], order='F')
+
+	if ex_type=='plane':
+		pulseshape = 1.0
+		harmonic = np.sin(ex_kx*x + ex_ky*y - omega*ts)
+	elif ex_type=='gauss-beam':
+		pulseshape = np.exp(-(y - ex_yoff)**2/ex_y_sig**2)
+		harmonic = np.sin(ex_kx*x + ex_ky*y - omega*ts)
+	elif ex_type=='gauss_pulse':
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2 - (y - ex_yoff - ex_vy*(ts-t0))**2/ex_y_sig**2))
+		harmonic = np.sin(ex_kx*x + ex_ky*y - omega*ts)
+	elif ex_type=='plane_pulse':
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
+		harmonic = np.sin(ex_kx*x + ex_ky*y - omega*ts)
+	elif ex_type=='simple_pulse2D':
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2) - (y - ex_yoff - ex_vy*(ts-t0))**2/ex_y_sig**2))
+		harmonic = 1.0
+	elif ex_type=='simple_pulse2D_x':
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
+		harmonic = 1.0
+
+
+	qbc[0,:num_ghost,:] = amp_Ex*pulseshape*harmonic
+	qbc[1,:num_ghost,:] = amp_Ey*pulseshape*harmonic
+	qbc[2,:num_ghost,:] = amp_Hz*pulseshape*harmonic
+	return qbc
 def scattering_bc(state,dim,t,qbc,num_ghost):
 	"""
 	EM scattering boundary conditions with three components Ey, Hz.
@@ -152,12 +262,12 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
 
 	if ex_type=='plane':
 		pulseshape = 1.0
-		harmonic = np.sin(kx_ex*x - omega*ts)
+		harmonic = np.sin(ex_kx*x - omega*ts)
 	elif ex_type=='gauss_pulse':
-		pulseshape = np.exp(-(x - xoff_ex - vx_ex*(ts-t0))**2/x_ex_sig**2)
-		harmonic = np.sin(kx_ex*x - omega*ts)
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
+		harmonic = np.sin(ex_kx*x - omega*ts)
 	elif ex_type=='simple_pulse':
-		pulseshape = np.exp(-(x - xoff_ex - vx_ex*(ts-t0))**2/x_ex_sig**2)
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
 		harmonic = 1.0	
 	
 	qbc[0,:num_ghost] = amp_Ex*pulseshape*harmonic

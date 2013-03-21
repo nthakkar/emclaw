@@ -1,4 +1,4 @@
-    subroutine rp1(maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, &
+    subroutine rpn2(maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, &
     fwave,s,amdq,apdq,num_aux)
 !     =====================================================
 
