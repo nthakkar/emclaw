@@ -34,9 +34,9 @@ x_change = x_upper/2
 
 # set moving refractive index parameters
 rip_vx_e 	= 0.0*co	# replace here the value of x
-rip_vx_m 	= vrip_x_e
+rip_vx_m 	= rip_vx_e 
 rip_vy_e	= 0.0*co
-rip_vy_m	= vrip_y_e
+rip_vy_m	= rip_vy_e 
 
 rip_xoff_e 	= 10e-6
 rip_xoff_m  = rip_xoff_e
@@ -44,9 +44,9 @@ rip_yoff_e  = rip_xoff_e
 xoff_rip_m 	= rip_xoff_e
 
 rip_xsig_e 	= 10.0e-6
-rip_xsim_m  = rip_xsig_e
-rip_ysim_e  = .9*y_upper/2
-rip_ysim_m  = rip_ysig_e
+rip_xsig_m  = rip_xsig_e
+rip_ysig_e  = .9*y_upper/2
+rip_ysig_m  = rip_ysig_e
 s_x_e 		= rip_xsig_e**2
 s_x_m 		= rip_xsig_m**2
 s_y_e 		= rip_ysig_e**2
@@ -160,16 +160,16 @@ def etar(t,X,Y):
 		eta[1,:,:] = 1*(x<x_change) + 4*(x>=x_change)
 		eta[2,:,:] = 0.
 		eta[3,:,:] = 0.
-	elif mat_shape=='interfacey'
+	elif mat_shape=='interfacey':
 		yy = y_upper-y_lower
 		eta[0,:,:] = 1*(y<yy/2) + 4*(x>=yy/2)
 		eta[1,:,:] = 1*(y<yy/2) + 4*(x>=yy/2)
 		eta[2,:,:] = 0.
 		eta[3,:,:] = 0.
-	elif mat_shape=='multilayer'
-		for n in range(0,N_layers)
+	elif mat_shape=='multilayer':
+		for n in range(0,N_layers):
 			yi = n*tlp
-			for m in range(0,n_layers)
+			for m in range(0,n_layers):
 				if m==0:
 					eta[0,:,:] = layers[m,0]*(yi<y<=yi+layers[m,3])
 					eta[1,:,:] = layers[m,1]*(yi<y<=yi+layers[m,3])
@@ -234,13 +234,13 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
 		pulseshape = np.exp(-(y - ex_yoff)**2/ex_y_sig**2)
 		harmonic = np.sin(ex_kx*x + ex_ky*y - omega*ts)
 	elif ex_type=='gauss_pulse':
-		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2 - (y - ex_yoff - ex_vy*(ts-t0))**2/ex_y_sig**2))
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2 - (y - ex_yoff - ex_vy*(ts-t0))**2/ex_y_sig**2)
 		harmonic = np.sin(ex_kx*x + ex_ky*y - omega*ts)
 	elif ex_type=='plane_pulse':
 		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
 		harmonic = np.sin(ex_kx*x + ex_ky*y - omega*ts)
 	elif ex_type=='simple_pulse2D':
-		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2) - (y - ex_yoff - ex_vy*(ts-t0))**2/ex_y_sig**2))
+		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2 - (y - ex_yoff - ex_vy*(ts-t0))**2/ex_y_sig**2)
 		harmonic = 1.0
 	elif ex_type=='simple_pulse2D_x':
 		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
@@ -313,7 +313,7 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 	X = grid.x.centers
 	Y = grid.y.centers
 	tini = state.t
-	state.aux = refind(tini,X,Y)
+	state.aux = etar(tini,X,Y)
 
 	state.problem_data['dx'] = x_dime.delta
 	state.problem_data['dy'] = y_dime.detla
