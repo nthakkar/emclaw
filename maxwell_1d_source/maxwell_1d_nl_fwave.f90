@@ -87,8 +87,8 @@
         psi2 = - 0.5d0*(muti_r*Hi  + mutim_r*Him )
 
 !     # flux difference minus source term
-        df1 = Hi - Him - dx*psi1
-        df2 = Ei - Eim - dx*psi2
+        df1 = (Hi - Him)/eo - dx*psi1
+        df2 = (Ei - Eim)/mo - dx*psi2
 
         b1 = (zi * df2 - df1) / (zim + zi)
         b2 = (zim * df2 + df1) / (zim + zi)

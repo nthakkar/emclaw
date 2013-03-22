@@ -90,7 +90,7 @@ ex_t_sig = 1.0*alambda			# width in time (pulse only)
 ex_x_sig = 1.0*alambda			# width in the x-direction (pulse)
 ex_y_sig = y_upper-y_lower
 ex_toff  = 0.0 					# offset in time
-ex_xoff	 = 20e-9    			# offset in the x-direction
+ex_xoff	 = 0.0 	    			# offset in the x-direction
 ex_yoff	 = y_upper/2 			# offset in the y-direction
 omega 	 = 2.0*np.pi/alambda	# frequency
 k 		 = 2.0*np.pi*alambda
@@ -250,31 +250,8 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
 	qbc[0,:num_ghost,:] = amp_Ex*pulseshape*harmonic
 	qbc[1,:num_ghost,:] = amp_Ey*pulseshape*harmonic
 	qbc[2,:num_ghost,:] = amp_Hz*pulseshape*harmonic
-	return qbc
-def scattering_bc(state,dim,t,qbc,num_ghost):
-	"""
-	EM scattering boundary conditions with three components Ey, Hz.
-	"""
-	grid = state.grid
-	x = grid.x.centers_with_ghost(num_ghost)[:num_ghost]
-	ts = state.t
-	t0 = 0.05
-
-	if ex_type=='plane':
-		pulseshape = 1.0
-		harmonic = np.sin(ex_kx*x - omega*ts)
-	elif ex_type=='gauss_pulse':
-		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
-		harmonic = np.sin(ex_kx*x - omega*ts)
-	elif ex_type=='simple_pulse':
-		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
-		harmonic = 1.0	
-	
-	qbc[0,:num_ghost] = amp_Ex*pulseshape*harmonic
-	qbc[1,:num_ghost] = amp_Hy*pulseshape*harmonic
 
 	return qbc
-
 
 def qinit(state):
 	"""
@@ -283,92 +260,63 @@ def qinit(state):
 	grid = state.grid
 	x = grid.x.centers
 	ts = state.t
-	state.q[0,:] = 0.0
-	state.q[1,:] = 0.0
+	state.q[0,:,:] = 0.0
+	state.q[1,:,:] = 0.0
+	state.q[2,:,:] = 0.0
 #	state.p = np.empty( (2,len(x)), order='F')
 	
 	return state
 
-def psir(solver,state,dt):
-	"""
-	This function calculates psi(x,y,t)
-	"""
-	grid 	= state.grid
-	x 	 	= grid.x.centers_with_ghost(num_ghost)
-	ts   	= state.t
-	etartim = etar(ts-dt/2,x)
-	etarti 	= etar(ts+dt/2,x)
-	etart 	= (etarti - etartim) / dt
-
-	return etart
-
-def kappa(solver,state,dt):
-	"""
-	This function calculates the capacity function kappa
-	"""
-	grid = state.grid
-	x = grid.x.centers_with_ghost(num_ghost)
-	ts = state.t
-	eta = etar(ts,x)
-	nlfields = np.empty( (2,len(x)), order='F')
-	kap = np.empty( (2,len(x)), order='F')
-	nlfields[0,:] = 2*chi2*state.q[0,:] + 3*chi3*state.q[0,:]**2
-	nlfields[0,:] = 2*chi2m*state.q[0,:] + 3*chi3m*state.q[1,:]**2
-
-	kap[0,:] = eta[0,:] + nlfields[0,:]
-	kap[1,:] = eta[1,:] + nlfields[1,:]
-
-	return kap
 
 # -------- MAIN SCRIPT --------------
 
-def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,save_outdir='./_trap',solver_type='sharpclaw',save_p='./_calculations',beforestep=True):
+def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_output',solver_type='sharpclaw'):
 
 	if use_petsc:
 		import clawpack.petclaw as pyclaw
 	else:
 		from clawpack import pyclaw
 
+	print v,y_upper,mx,my
+
 #	Solver settings
 	if solver_type=='classic':
-		solver=pyclaw.ClawSolver1D()
+		solver=pyclaw.ClawSolver2D()
 		solver.dimensional_split=False
 		solver.limiters = pyclaw.limiters.tvd.MC
 	elif solver_type=='sharpclaw':
-		solver=pyclaw.SharpClawSolver1D()
+		solver=pyclaw.SharpClawSolver2D()
 		solver.num_waves = 2
 		solver.weno_order = 5
 
-	solver.dt_initial=0.005
-	solver.max_steps = 1000000
 
-	import maxwell_1d_nl
-	solver.rp = maxwell_1d_nl
+#	solver.dt_initial=0.005
+#	solver.max_steps = 1000000
+	import maxwell_2d
+	solver.rp = maxwell_2d
 	solver.fwave = True
-	solver.cfl_max = 0.45
-	solver.cfl_desired = 0.4
+	solver.cfl_max = 2.45
+	solver.cfl_desired = 2.4
+#	solver.before_step = update_aux
 
-	if beforestep:
-		print 'update aux'
-		solver.call_before_step_each_stage = 1
-		solver.before_step = update_aux
-	
+
 #	define number of waves (eqn) and aux (eps,mu)
-	num_eqn = 2
-	num_aux = 4
+	num_eqn = 3
+	num_aux = 2
 
-#	print mx
-	#	abstract domain and state setup
+#	abstract domain and state setup
 	x_dime = pyclaw.Dimension('x',x_lower,x_upper,mx)
-	domain = pyclaw.Domain([x_dime])
+	y_dime = pyclaw.Dimension('y',y_lower,y_upper,my)
+	domain = pyclaw.Domain([x_dime,y_dime])
 	state = pyclaw.State(domain,num_eqn,num_aux)
-	state.mp = 2
 	grid = state.grid
-	x = grid.x.centers
+	X = grid.x.centers
+	Y = grid.y.centers
 	tini = state.t
-	state.aux = etar(tini,x)
-	
+	state.aux = refind(tini,X,Y)
+
 	state.problem_data['dx'] = x_dime.delta
+	state.problem_data['dy'] = y_dime.detla
 	state.problem_data['chi2_e'] = chi2_e
 	state.problem_data['chi3_e'] = chi3_e
 	state.problem_data['chi2_m'] = chi2_m
@@ -378,30 +326,34 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,sa
 	state.problem_data['co'] = co
 	state.problem_data['zo'] = zo
 
-	# Boundary conditions
+# 	Boundary conditions
+	solver.user_bc_lower = scattering_bc
 	solver.bc_lower[0] = pyclaw.BC.custom
 	solver.bc_upper[0] = pyclaw.BC.extrap
-	solver.aux_bc_lower[0]=pyclaw.BC.custom
-	solver.aux_bc_upper[0]=pyclaw.BC.custom
-	solver.user_bc_lower = scattering_bc
+	solver.bc_lower[1] = pyclaw.BC.extrap
+	solver.bc_upper[1] = pyclaw.BC.extrap
+
 	solver.user_aux_bc_lower = setaux_lower
 	solver.user_aux_bc_upper = setaux_upper
+	solver.aux_bc_lower[0] = pyclaw.BC.custom
+	solver.aux_bc_upper[0] = pyclaw.BC.custom
+	solver.aux_bc_lower[1] = pyclaw.BC.wall
+	solver.aux_bc_upper[1] = pyclaw.BC.wall
 
-	#Initial condition
+#	Initial solution
 	qinit(state)
 
-	
-	#controller
+
+#	controller
 	claw = pyclaw.Controller()
-	claw.tfinal = 500
-	claw.num_output_times = 100
+	claw.keep_copy = True
+	claw.tfinal = 2
+	claw.num_output_times = 10
 	claw.solver = solver
 	claw.solution = pyclaw.Solution(state,domain)
-	claw.write_aux_always = True
 	claw.outdir = save_outdir
-#	claw.compute_p = ffields
-#	claw.outdir_p = save_p
-	
+	claw.write_aux_always = True
+
 	status = claw.run()
 
 	if htmlplot:  pyclaw.plot.html_plot(outdir=save_outdir,file_format=claw.output_format)
@@ -413,4 +365,7 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,sa
 if __name__=="__main__":
 	import sys
 	from clawpack.pyclaw.util import run_app_from_main
-	output = run_app_from_main(em1D)
+	output = run_app_from_main(em2D)
+	
+
+

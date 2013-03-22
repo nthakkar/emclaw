@@ -72,10 +72,12 @@
         muti_r      = auxl(4,i  )
         mutim_r     = auxr(4,i-1)
 
-        Ei          = ql(1,i  )
-        Eim         = qr(1,i-1)
-        Hi          = ql(2,i  )
-        Him         = qr(2,i-1)
+        q1i    = ql(1,i)
+        q1im   = qr(1,i-1)
+        q2i    = ql(2,i)
+        q2im   = qr(2,i-1)
+        q3i    = ql(3,i)
+        q3im   = qr(3,i-1)
 
 !     # calculate velocity c = 1/sqrt(eps*mu) and impedance Z = sqrt(eps/mu)
         ci  = co 
@@ -83,30 +85,53 @@
         zi  = zo
         zim = zo
 
-        psi1 = - 0.5d0*(epsti_r*Ei + epstim_r*Eim)
-        psi2 = - 0.5d0*(muti_r*Hi  + mutim_r*Him )
+        psi1 = - 0.5d0*(epsti_r*q1i + epstim_r*q1im)
+        psi2 = - 0.5d0*(epsti_r*q2i + epstim_r*q2im)
+        psi3 = - 0.5d0*(muti_r*q3i  + mutim_r*q3im )
 
-!     # flux difference minus source term
-        df1 = Hi - Him - dx*psi1
-        df2 = Ei - Eim - dx*psi2
+!     # flux difference
+        
+        df1 = (q1i - q1im)/eo
+        df2 = (q2i - q2im)/eo
+        df3 = (q3i - q3im)/mo
 
-        b1 = (zi * df2 - df1) / (zim + zi)
-        b2 = (zim * df2 + df1) / (zim + zi)
-
-        kappa1 = 0.5d0*(epsi_r + epsim_r + 2*chi2_e_r*(Ei + Eim) + 3*chi3_e_r*((Ei + Eim)**2))
-        kappa2 = 0.5d0*(mui_r  + muim_r  + 2*chi2_m_r*(Hi + Him) + 3*chi3_m_r*((Hi + Him)**2))
-
-  
-!     # Compute the waves.
-    
-        fwave(1,1,i) = b1 *(-zim) / kappa1
-        fwave(2,1,i) = b1 / kappa2
-        s(1,i) = -cim
-    
-        fwave(1,2,i) = b2 *(zi) / kappa1
-        fwave(2,2,i) = b2 / kappa2
-        s(2,i) = ci
-
+        kappa1 = 0.5d0*(epsi_r + epsim_r + 2*chi2_e_r*(q1i + q1im) + 3*chi3_e_r*((q1i + q1im)**2))
+        kappa1 = 0.5d0*(epsi_r + epsim_r + 2*chi2_e_r*(q2i + q2im) + 3*chi3_e_r*((q2i + q2im)**2))
+        kappa3 = 0.5d0*(mui_r  + muim_r  + 2*chi2_m_r*(q3i + q3im) + 3*chi3_m_r*((q3i + q3im)**2))
+        !   Normal & perpendicular waves
+!   ------------
+        if (ixy==1) then
+            dq2 = df2 - dx*psi3
+            dq3 = df3 - dx*psi2   
+            beta1 = (-dq3+dq2*zi)/(zi+zim)
+            beta2 = 0.
+            beta3 = (dq3+dq2*zim)/(zi+zim)
+            wave(1,1,i) = 0.
+            wave(2,1,i) = beta1 * (-zim) / kappa2
+            wave(3,1,i) = beta1 / kappa3
+            wave(1,2,i) = 0.
+            wave(2,2,i) = beta3 * (zi) / kappa2
+            wave(3,2,i) = beta3 / kappa3
+            s(1,i) = -cim
+            s(2,i) = ci 
+        else
+            dq1 = -df1 - dx*psi3
+            dq3 = -df3 - dx*psi1
+            beta1 = (dq3+dq1*zi)/(zi+zim)
+            beta2 = 0
+            beta3 = (-dq3+dq1*zim)/(zi+zim)
+            wave(1,1,i) = beta1 * (zim) / kappa1
+            wave(2,1,i) = 0.
+            wave(3,1,i) = beta1 / kappa3
+            wave(1,2,i) = beta3 * (-zi) / kappa1
+            wave(2,2,i) = 0.
+            wave(3,2,i) = beta3 / kappa3
+            s(1,i) = -cim
+            s(2,i) = ci 
+            !if (beta1.gt.1.e-10) then
+            !    write(*,*) s(1,i), beta1
+            !endif 
+        endif
 
     20 END DO
 
