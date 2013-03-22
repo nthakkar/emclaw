@@ -93,7 +93,7 @@ amp_Ey	 = 1.
 amp_Hz	 = 1.
 
 # ........ pre-calculations for wave propagation .................
-v_r = 1./np.sqrt(bkg_e*bkg_m)
+v_r = 1./np.sqrt(bkg_er*bkg_mr)
 v = co*v_r
 ex_vx = v
 ex_vy = 0.0
