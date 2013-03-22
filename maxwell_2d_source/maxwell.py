@@ -8,10 +8,10 @@ import numpy as np
 # ======== all definitions are in m,s,g unit system.
 
 # ....... dimensions .............................................
-x_lower = 0.9e-6
+x_lower = 0.0e-6
 x_upper = 500e-6					# lenght [m]
 y_lower = 0.0e-6
-y_upper = 1.0e-6 					# notice that for multilayer this is set later
+y_upper = 1.0e-6 					# notice that for multilayer this is value will be over-written
 # ........ material properties ...................................
 
 # vacuum

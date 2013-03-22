@@ -1,4 +1,4 @@
-    subroutine rpn2(maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, &
+    subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, &
     fwave,s,amdq,apdq,num_aux)
 !     =====================================================
 
@@ -51,14 +51,15 @@
     double precision ::   qr(meqn,1-mbc:maxm+mbc)
     double precision :: apdq(meqn,1-mbc:maxm+mbc)
     double precision :: amdq(meqn,1-mbc:maxm+mbc)
+    double precision :: wave(meqn,mwaves,1-mbc:maxm+mbc)
 
-    integer :: i, mx, mbc, maxm, num_aux, meqn, mwaves, m
+    integer :: i, mx, mbc, maxm, num_aux, meqn, mwaves, m, ixy
 
-    double precision :: epsi_r, epsim_r, mui_r, muim_r, Ei, Eim, Hi, Him, ci, cim, zi, zim
-    double precision :: epsti_r, epstim_r, muti_r, mutim_r, kappa1, kappa2, eo, mo, zo, co
-    double precision :: df1, df2, psi1, psi2, b1, b2, dx, chi2_e_r, chi2_m_r, chi3_e_r, chi3_m_r
-
-    common /cparam/  dx, chi2_e_r, chi2_m_r, chi3_e_r, chi3_m_r, eo, mo, co, zo
+    double precision :: epsi_r, epsim_r, mui_r, muim_r, q1i, q1im, q2i, q2im, q3i, q3im, ci, cim, zi, zim
+    double precision :: epsti_r, epstim_r, muti_r, mutim_r, kappa1, kappa2, kappa3, eo, mo, zo, co
+    double precision :: df1, df2, df3, psi1, psi2, psi3, b1, b2, dx, dy, chi2_e_r, chi2_m_r, chi3_e_r, chi3_m_r
+    double precision :: dq1, dq2, dq3, beta1, beta2, beta3
+    common /cparam/  dx, dy, chi2_e_r, chi2_m_r, chi3_e_r, chi3_m_r, eo, mo, co, zo
 
 !     # split the jump in q at each interface into waves
 
@@ -115,8 +116,8 @@
             s(1,i) = -cim
             s(2,i) = ci 
         else
-            dq1 = -df1 - dx*psi3
-            dq3 = -df3 - dx*psi1
+            dq1 = -df1 - dy*psi3
+            dq3 = -df3 - dy*psi1
             beta1 = (dq3+dq1*zi)/(zi+zim)
             beta2 = 0
             beta3 = (-dq3+dq1*zim)/(zi+zim)
@@ -146,4 +147,4 @@
     220 END DO
 
     return
-    end subroutine rp1
+    end subroutine rpn2

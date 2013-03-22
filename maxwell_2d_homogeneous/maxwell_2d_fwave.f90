@@ -41,32 +41,32 @@
 !   # From the basic clawpack routines, this routine is called with
 !   # ql = qr
 
-!   ------------
-    implicit double precision (a-h,o-z)
-!   ------------
-    dimension auxl(num_aux,1-mbc:maxm+mbc)
-    dimension auxr(num_aux,1-mbc:maxm+mbc)
-    dimension wave(meqn,mwaves,1-mbc:maxm+mbc)
-    dimension    s(mwaves,1-mbc:maxm+mbc)
-    dimension   ql(meqn,1-mbc:maxm+mbc)
-    dimension   qr(meqn,1-mbc:maxm+mbc)
-    dimension apdq(meqn,1-mbc:maxm+mbc)
-    dimension amdq(meqn,1-mbc:maxm+mbc)
+    double precision :: auxl(num_aux,1-mbc:maxm+mbc)
+    double precision :: auxr(num_aux,1-mbc:maxm+mbc)
+    double precision :: wave(meqn,mwaves,1-mbc:maxm+mbc)
+    double precision ::    s(mwaves,1-mbc:maxm+mbc)
+    double precision ::   ql(meqn,1-mbc:maxm+mbc)
+    double precision ::   qr(meqn,1-mbc:maxm+mbc)
+    double precision :: apdq(meqn,1-mbc:maxm+mbc)
+    double precision :: amdq(meqn,1-mbc:maxm+mbc)
 
-!   local arrays
-!   ------------
-    dimension dq(3)
-    dimension beta(3)
+    integer :: i, mx, mbc, maxm, num_aux, meqn, mwaves, m, ixy
 
-    common /comxyt/ dtcom,dxcom,dycom,tcom,icom,jcom
+    double precision :: dq1, dq2, dq3, dx, dy
+    double precision :: beta1, beta2, beta3
+    double precision :: eta1i, eta1im, eta2i, eta2im
+    double precision :: q1i, q1im, q2i, q2im, q3i, q3im
+    double precision :: vi, vim, zi, zim, co, eo, mo, zo, ci, cim
+
+    common /comxyt/ eo, mo, co, zo, dx, dy
 !   ------------
 
 
     do 20 i = 2-mbc, mx+mbc
-        eta1i   = auxl(1,i)
-        eta1im  = auxr(1,i-1)
-        eta2i   = auxl(2,i)
-        eta2im  = auxr(1,i-1)
+        eta1i   = eo*auxl(1,i)
+        eta1im  = eo*auxr(1,i-1)
+        eta2i   = mo*auxl(2,i)
+        eta2im  = mo*auxr(2,i-1)
         q1i    = ql(1,i)
         q1im   = qr(1,i-1)
         q2i    = ql(2,i)
@@ -82,38 +82,38 @@
         zim     = dsqrt(eta1im / eta2im)
 !   # flux difference
         
-        dq(1) = q1i/eta1i - q1im/eta1im
-        dq(2) = q2i/eta1i - q2im/eta1im
-        dq(3) = q3i/eta2i - q3im/eta2im
+        dq1 = q1i/eta1i - q1im/eta1im
+        dq2 = q2i/eta1i - q2im/eta1im
+        dq3 = q3i/eta2i - q3im/eta2im
 
 !   Normal & perpendicular waves
 !   ------------
         if (ixy==1) then   
-            beta(1) = (-dq(3)+dq(2)*zi)/(zi+zim)
-            beta(2) = 0.
-            beta(3) = (dq(3)+dq(2)*zim)/(zi+zim)
+            beta1 = (-dq3+dq2*zi)/(zi+zim)
+            beta2 = 0.
+            beta3 = (dq3+dq2*zim)/(zi+zim)
             wave(1,1,i) = 0.
-            wave(2,1,i) = beta(1) * (-zim)
-            wave(3,1,i) = beta(1)
+            wave(2,1,i) = beta1 * (-zim)
+            wave(3,1,i) = beta1
             wave(1,2,i) = 0.
-            wave(2,2,i) = beta(3) * (zi)
-            wave(3,2,i) = beta(3)
+            wave(2,2,i) = beta3 * (zi)
+            wave(3,2,i) = beta3
             s(1,i) = -vim
             s(2,i) = vi 
         else
-            beta(1) = -(dq(3)+dq(1)*zi)/(zi+zim)
-            beta(2) = 0
-            beta(3) = (dq(3)-dq(1)*zim)/(zi+zim)
-            wave(1,1,i) = beta(1) * (zim)
+            beta1 = -(dq3+dq1*zi)/(zi+zim)
+            beta2 = 0
+            beta3 = (dq3-dq1*zim)/(zi+zim)
+            wave(1,1,i) = beta1 * (zim)
             wave(2,1,i) = 0.
-            wave(3,1,i) = beta(1)
-            wave(1,2,i) = beta(3) * (-zi)
+            wave(3,1,i) = beta1
+            wave(1,2,i) = beta3 * (-zi)
             wave(2,2,i) = 0.
-            wave(3,2,i) = beta(3)
+            wave(3,2,i) = beta3
             s(1,i) = -vim
             s(2,i) = vi 
-            !if (beta(1).gt.1.e-10) then
-            !    write(*,*) s(1,i), beta(1)
+            !if (beta1.gt.1.e-10) then
+            !    write(*,*) s(1,i), beta1
             !endif 
         endif
 
