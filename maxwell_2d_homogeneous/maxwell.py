@@ -177,7 +177,7 @@ def qinit(state):
 
 # -------- MAIN SCRIPT --------------
 
-def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,save_outdir='./_output',solver_type='sharpclaw',model='isotropic'):
+def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,save_outdir='./_output',solver_type='sharpclaw'):
 
 	if use_petsc:
 		import clawpack.petclaw as pyclaw
@@ -200,15 +200,8 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,sa
 	solver.dt_initial=0.005
 	solver.max_steps = 1000000
 
-	if model=='isotropic':
-		import rp2_em
-		solver.rp = rp2_em
-	elif model=='anisotropic':
-		import rp2_em_ani
-		solver.rp = rp2_em_ani
-	elif model=='old':
-		import rpn2_em
-		solver.ro = rpn2_em
+	import maxwell_2d
+	solver.rp = maxwell_2d
 
 	solver.fwave = True
 	solver.cfl_max = 2.45
