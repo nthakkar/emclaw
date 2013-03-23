@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # encoding: utf-8
-#--------- non-linear em --------------------------
-
 import numpy as np
-
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
-
+n_frames = 30
 # ....... dimensions .............................................
 x_lower = 0.0e-6
-x_upper = 500e-6					# lenght [m]
+x_upper = 100e-6					# lenght [m]
 y_lower = 0.0e-6
 y_upper = 1.0e-6 					# notice that for multilayer this is value will be over-written
 # ........ material properties ...................................
@@ -18,9 +15,9 @@ y_upper = 1.0e-6 					# notice that for multilayer this is value will be over-wr
 eo = 8.854187817e-12			# vacuum permittivity   - [F/m]
 mo = 4e-7*np.pi 				# vacuum peremeability  - [V.s/A.m]
 co = 1/np.sqrt(eo*mo)			# vacuum speed of light - [m/s]
-zo = np.sqrt(mo/eo)
+zo = np.sqrt(eo/mo)
 # material
-mat_shape = 'multilayer'			# material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'homogeneous'			# material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
 bkg_er = 1.5
@@ -34,14 +31,14 @@ x_change = x_upper/2
 
 # set moving refractive index parameters
 rip_vx_e 	= 0.0*co	# replace here the value of x
-rip_vx_m 	= rip_vx_e 
+rip_vx_m 	= rip_vx_e
 rip_vy_e	= 0.0*co
-rip_vy_m	= rip_vy_e 
+rip_vy_m	= rip_vy_e
 
 rip_xoff_e 	= 10e-6
 rip_xoff_m  = rip_xoff_e
 rip_yoff_e  = rip_xoff_e
-xoff_rip_m 	= rip_xoff_e
+rip_yoff_m  = rip_xoff_e
 
 rip_xsig_e 	= 10.0e-6
 rip_xsig_m  = rip_xsig_e
@@ -76,12 +73,12 @@ if mat_shape=='multilayer':
 	tlp = np.sum(layers[:,3])
 	mlp = np.floor(tlp/1e-9)
 
-
 # set non-linear parameters of the material
 chi2_e		= 0.0
 chi3_e		= 0.0
 chi2_m 		= 0.0
 chi3_m 		= 0.0
+
 
 # ........ excitation - initial conditoons .......................
 ex_type  = 'plane'
@@ -92,14 +89,14 @@ ex_y_sig = y_upper-y_lower
 ex_toff  = 0.0 					# offset in time
 ex_xoff	 = 0.0 	    			# offset in the x-direction
 ex_yoff	 = y_upper/2 			# offset in the y-direction
-omega 	 = 2.0*np.pi/alambda	# frequency
-k 		 = 2.0*np.pi*alambda
+omega 	 = 2.0*np.pi*co/alambda	# frequency
+k 		 = 2.0*np.pi/alambda
 amp_Ex	 = 0.
 amp_Ey	 = 1.
 amp_Hz	 = 1.
 
 # ........ pre-calculations for wave propagation .................
-v_r = 1./np.sqrt(bkg_er*bkg_mr)
+v_r = 1./bkg_n
 v = co*v_r
 ex_vx = v
 ex_vy = 0.0
@@ -113,6 +110,11 @@ if mat_shape=='multilayer':
 else:
 	my = np.floor(20*(y_upper-y_lower)/alambda)
 
+ddx = (x_upper-x_lower)/mx
+ddy = (y_upper-y_lower)/my
+ddt = dt=0.90/(co*np.sqrt(1.0/(ddx**2)+1.0/(ddy**2)))
+max_steps = 250000
+t_final = (x_upper-x_lower)/v
 # -------- GLOBAL FUNCTION DEFINITIONS --------------
 
 # refractive index map definition function 
@@ -171,15 +173,15 @@ def etar(t,X,Y):
 			yi = n*tlp
 			for m in range(0,n_layers):
 				if m==0:
-					eta[0,:,:] = layers[m,0]*(yi<y<=yi+layers[m,3])
-					eta[1,:,:] = layers[m,1]*(yi<y<=yi+layers[m,3])
+					eta[0,:,:] = layers[m,0]*(yi<y)*(y<=yi+layers[m,3])
+					eta[1,:,:] = layers[m,1]*(yi<y)*(y<=yi+layers[m,3])
 				else:
-					eta[0,:,:] = layers[m,0]*(yi+layers[m-1,3]<y<=yi+layers[m,3])
-					eta[1,:,:] = layers[m,1]*(yi+layers[m-1,3]<y<=yi+layers[m,3])
+					eta[0,:,:] = layers[m,0]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
+					eta[1,:,:] = layers[m,1]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
 
 
-		eta[0,:,:] = layers[0,0]*(N_layers*tlp<y<=N_layers*tlp+layers[0,3])
-		eta[1,:,:] = layers[0,1]*(N_layers*tlp<y<=N_layers*tlp+layers[0,3])
+		eta[0,:,:] = layers[0,0]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,3])
+		eta[1,:,:] = layers[0,1]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,3])
 		eta[2,:,:] = 0.0
 		eta[3,:,:] = 0.0	
 
@@ -190,11 +192,13 @@ def update_aux(solver,state):
 	y = state.grid.y.centers
 	x = state.grid.x.centers
 	td = state.t
+	oldaux = state.aux.copy(order='F')
 	state.aux = setaux(td,x,y)
-	
+	state.q = state.q*state.aux[0:2,:,:]/oldaux[0:2,:,:]
+
 #	next function might be redundant since it already exists as deltan	
 def setaux(t,x,y):
-	aux = np.empty( [2,len(y),len(x)], order='F')
+	aux = np.empty( [4,len(y),len(x)], order='F')
 	aux = etar(t,x,y)
 	return aux
 
@@ -224,6 +228,7 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
 	ts = state.t
 	y,x = np.meshgrid(Y,X)
 	t0 = 0.0
+	aux_left_bc = etar(t,X,Y)
 	pulseshape = np.zeros( [len(X),len(Y)], order='F')
 	harmonic = np.zeros( [len(X),len(Y)], order='F')
 
@@ -245,7 +250,9 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
 	elif ex_type=='simple_pulse2D_x':
 		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
 		harmonic = 1.0
-
+	elif ex_type=='off':
+		pulseshape = 0.
+		harmonic = 0.
 
 	qbc[0,:num_ghost,:] = amp_Ex*pulseshape*harmonic
 	qbc[1,:num_ghost,:] = amp_Ey*pulseshape*harmonic
@@ -257,16 +264,25 @@ def qinit(state):
 	"""
 	Initial conditions in simulation grid for electromagnetic components q
 	"""
-	grid = state.grid
-	x = grid.x.centers
-	ts = state.t
-	state.q[0,:,:] = 0.0
-	state.q[1,:,:] = 0.0
-	state.q[2,:,:] = 0.0
-#	state.p = np.empty( (2,len(x)), order='F')
+	
+	if ex_type=='off':
+		grid = state.grid
+		X = grid.x.centers
+		Y = grid.y.centers
+		y,x = np.meshgrid(Y,X)
+		dd1 = x_upper-x_lower
+		dd2 = y_upper-y_lower
+		sdd = dd1/20
+		r2 = (x-dd1/2)**2 + (y-dd2/2)**2
+		state.q[0,:,:] = 0.
+		state.q[1,:,:] = 0.
+		state.q[2,:,:] = np.exp(-r2/sdd**2)
+	else:
+		state.q[0,:,:] = 0.0
+		state.q[1,:,:] = 0.0
+		state.q[2,:,:] = 0.0
 	
 	return state
-
 
 # -------- MAIN SCRIPT --------------
 
@@ -290,8 +306,8 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 		solver.weno_order = 5
 
 
-#	solver.dt_initial=0.005
-#	solver.max_steps = 1000000
+	solver.dt_initial= ddt
+	solver.max_steps = max_steps
 	import maxwell_2d
 	solver.rp = maxwell_2d
 	solver.fwave = True
@@ -302,7 +318,7 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 
 #	define number of waves (eqn) and aux (eps,mu)
 	num_eqn = 3
-	num_aux = 2
+	num_aux = 4
 
 #	abstract domain and state setup
 	x_dime = pyclaw.Dimension('x',x_lower,x_upper,mx)
@@ -316,11 +332,11 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 	state.aux = etar(tini,X,Y)
 
 	state.problem_data['dx'] = x_dime.delta
-	state.problem_data['dy'] = y_dime.detla
-	state.problem_data['chi2_e'] = chi2_e
-	state.problem_data['chi3_e'] = chi3_e
-	state.problem_data['chi2_m'] = chi2_m
-	state.problem_data['chi3_m'] = chi3_m
+	state.problem_data['dy'] = y_dime.delta
+	state.problem_data['chi2_e_r'] = chi2_e
+	state.problem_data['chi3_e_r'] = chi3_e
+	state.problem_data['chi2_m_r'] = chi2_m
+	state.problem_data['chi3_m_r'] = chi3_m
 	state.problem_data['eo'] = eo
 	state.problem_data['mo'] = mo
 	state.problem_data['co'] = co
@@ -347,8 +363,8 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 #	controller
 	claw = pyclaw.Controller()
 	claw.keep_copy = True
-	claw.tfinal = 2
-	claw.num_output_times = 10
+	claw.tfinal = t_final
+	claw.num_output_times = n_frames
 	claw.solver = solver
 	claw.solution = pyclaw.Solution(state,domain)
 	claw.outdir = save_outdir

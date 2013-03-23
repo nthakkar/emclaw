@@ -7,9 +7,10 @@ import numpy as np
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
 
+n_frames = 30
 # ....... dimensions .............................................
 x_lower = 0.0e-6
-x_upper = 500e-6					# lenght [m]
+x_upper = 100e-6					# lenght [m]
 y_lower = 0.0e-6
 y_upper = 1.0e-6 					# notice that for multilayer this is value will be over-written
 # ........ material properties ...................................
@@ -20,7 +21,7 @@ mo = 4e-7*np.pi 				# vacuum peremeability  - [V.s/A.m]
 co = 1/np.sqrt(eo*mo)			# vacuum speed of light - [m/s]
 zo = np.sqrt(eo/mo)
 # material
-mat_shape = 'multilayer'			# material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'homogeneous'			# material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
 bkg_er = 1.5
@@ -41,7 +42,7 @@ rip_vy_m	= rip_vy_e
 rip_xoff_e 	= 10e-6
 rip_xoff_m  = rip_xoff_e
 rip_yoff_e  = rip_xoff_e
-xoff_rip_m 	= rip_xoff_e
+rip_yoff_m  = rip_xoff_e
 
 rip_xsig_e 	= 10.0e-6
 rip_xsig_m  = rip_xsig_e
@@ -86,14 +87,14 @@ ex_y_sig = y_upper-y_lower
 ex_toff  = 0.0 					# offset in time
 ex_xoff	 = 0.0 	    			# offset in the x-direction
 ex_yoff	 = y_upper/2 			# offset in the y-direction
-omega 	 = 2.0*np.pi/alambda	# frequency
-k 		 = 2.0*np.pi*alambda
+omega 	 = 2.0*np.pi*co/alambda	# frequency
+k 		 = 2.0*np.pi/alambda
 amp_Ex	 = 0.
 amp_Ey	 = 1.
 amp_Hz	 = 1.
 
 # ........ pre-calculations for wave propagation .................
-v_r = 1./np.sqrt(bkg_er*bkg_mr)
+v_r = 1./bkg_n
 v = co*v_r
 ex_vx = v
 ex_vy = 0.0
@@ -107,6 +108,11 @@ if mat_shape=='multilayer':
 else:
 	my = np.floor(20*(y_upper-y_lower)/alambda)
 
+ddx = (x_upper-x_lower)/mx
+ddy = (y_upper-y_lower)/my
+ddt = dt=0.90/(co*np.sqrt(1.0/(ddx**2)+1.0/(ddy**2)))
+max_steps = 250000
+t_final = (x_upper-x_lower)/v
 # -------- GLOBAL FUNCTION DEFINITIONS --------------
 
 # refractive index map definition function 
@@ -184,11 +190,13 @@ def update_aux(solver,state):
 	y = state.grid.y.centers
 	x = state.grid.x.centers
 	td = state.t
+	oldaux = state.aux.copy(order='F')
 	state.aux = setaux(td,x,y)
-	
+	state.q = state.q*state.aux[0:2,:,:]/oldaux[0:2,:,:]
+
 #	next function might be redundant since it already exists as deltan	
 def setaux(t,x,y):
-	aux = np.empty( [2,len(y),len(x)], order='F')
+	aux = np.empty( [4,len(y),len(x)], order='F')
 	aux = etar(t,x,y)
 	return aux
 
@@ -240,7 +248,9 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
 	elif ex_type=='simple_pulse2D_x':
 		pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
 		harmonic = 1.0
-
+	elif ex_type=='off':
+		pulseshape = 0.
+		harmonic = 0.
 
 	qbc[0,:num_ghost,:] = amp_Ex*pulseshape*harmonic*aux_left_bc[0,:,:]*eo
 	qbc[1,:num_ghost,:] = amp_Ey*pulseshape*harmonic*aux_left_bc[0,:,:]*eo
@@ -252,13 +262,23 @@ def qinit(state):
 	"""
 	Initial conditions in simulation grid for electromagnetic components q
 	"""
-	grid = state.grid
-	x = grid.x.centers
-	ts = state.t
-	state.q[0,:,:] = 0.0
-	state.q[1,:,:] = 0.0
-	state.q[2,:,:] = 0.0
-#	state.p = np.empty( (2,len(x)), order='F')
+	
+	if ex_type=='off':
+		grid = state.grid
+		X = grid.x.centers
+		Y = grid.y.centers
+		y,x = np.meshgrid(Y,X)
+		dd1 = x_upper-x_lower
+		dd2 = y_upper-y_lower
+		sdd = dd1/20
+		r2 = (x-dd1/2)**2 + (y-dd2/2)**2
+		state.q[0,:,:] = 0.*eo
+		state.q[1,:,:] = 0.*eo
+		state.q[2,:,:] = np.exp(-r2/sdd**2)*mo
+	else:
+		state.q[0,:,:] = 0.0
+		state.q[1,:,:] = 0.0
+		state.q[2,:,:] = 0.0
 	
 	return state
 
@@ -272,7 +292,7 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 	else:
 		from clawpack import pyclaw
 
-	print v,y_upper,mx,my
+	print v,y_upper-y_lower,x_upper-x_lower,mx,my,ddt,t_final
 
 #	Solver settings
 	if solver_type=='classic':
@@ -285,8 +305,8 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 		solver.weno_order = 5
 
 
-#	solver.dt_initial=0.005
-#	solver.max_steps = 1000000
+	solver.dt_initial=ddt
+	solver.max_steps = max_steps
 	import maxwell_2d
 	solver.rp = maxwell_2d
 	solver.fwave = True
@@ -297,7 +317,7 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 
 #	define number of waves (eqn) and aux (eps,mu)
 	num_eqn = 3
-	num_aux = 2
+	num_aux = 4
 
 #	abstract domain and state setup
 	x_dime = pyclaw.Dimension('x',x_lower,x_upper,mx)
@@ -338,8 +358,8 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 #	controller
 	claw = pyclaw.Controller()
 	claw.keep_copy = True
-	claw.tfinal = 2
-	claw.num_output_times = 10
+	claw.tfinal = t_final
+	claw.num_output_times = n_frames
 	claw.solver = solver
 	claw.solution = pyclaw.Solution(state,domain)
 	claw.outdir = save_outdir
