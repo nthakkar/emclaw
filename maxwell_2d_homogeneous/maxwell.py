@@ -302,7 +302,8 @@ def em2D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
 	elif solver_type=='sharpclaw':
 		solver=pyclaw.SharpClawSolver2D()
 		solver.num_waves = 2
-		solver.weno_order = 5
+		solver.lim_type = 3
+		solver.poly_order = 5
 
 
 	solver.dt_initial=ddt
