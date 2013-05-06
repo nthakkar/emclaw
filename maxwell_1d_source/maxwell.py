@@ -73,7 +73,7 @@ chi3_m 		= 0.0
 
 # ........ excitation - initial conditoons .......................
 ex_type  = 'off'
-alambda  = .1				# wavelength
+alambda  = x_upper/10.0				# wavelength
 ex_t_sig = 1.0*alambda			# width in time (pulse only)
 ex_x_sig = 1.0*alambda			# width in the x-direction (pulse)
 ex_toff  = 0.0 					# offset in time
