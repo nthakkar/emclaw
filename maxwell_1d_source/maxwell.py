@@ -273,7 +273,7 @@ def kappa(solver,state,dt):
 
 # -------- MAIN SCRIPT --------------
 
-def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,save_outdir='./_trap',solver_type='sharpclaw',save_p='./_calculations',before_step=False):
+def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,save_outdir='./_trap',solver_type='sharpclaw',save_p='./_calculations',before_step=False,limiter=4,limiter_order=4):
 
 	if use_petsc:
 		import clawpack.petclaw as pyclaw
@@ -288,9 +288,9 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=False,sa
 	elif solver_type=='sharpclaw':
 		solver=pyclaw.SharpClawSolver1D()
 		solver.num_waves = 2
-		solver.weno_order = 5
-		solver.lim_type = 4
-		solver.interpolation_order = 6
+		solver.weno_order = limiter_order
+		solver.lim_type = limiter
+		solver.interpolation_order = limiter_order
 
 
 	solver.dt_initial = ddt
