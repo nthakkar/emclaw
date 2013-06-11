@@ -7,7 +7,7 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,n
 !   # in this case eps and mu dependend on time and position,
 !   # variable coefficients
 !   #   kappa1(q,t,r)*(q1)_t + (q2)_x           = -(eps)_t*(q1)
-!   #   kappa2(q,t,r)*(q2)_t + (q1)_y           = -(mu)_t*(q2)
+!   #   kappa2(q,t,r)*(q2)_t + (q1)_y           = -(eps)_t*(q2)
 !   #   kappa3(q,t,r)*(q3)_t + (q2)_y - (q1)_x  = -(mu)_t*(q3) 
 !   #
 !   # where q1=Eq, q2=E, q3=H, eps=f(x,t), and mu=g(x,t)
@@ -54,81 +54,90 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,n
     double precision :: apdq(meqn,1-mbc:maxm+mbc)
     double precision :: amdq(meqn,1-mbc:maxm+mbc)
     double precision :: wave(meqn,mwaves,1-mbc:maxm+mbc)
-
+    double precision :: chi2(3)
+    double precision :: chi3(3)
     integer :: i, mx, mbc, maxm, num_aux, meqn, mwaves, m, ixy
 
-    double precision :: epsi_r, epsim_r, mui_r, muim_r, q1i, q1im, q2i, q2im, q3i, q3im, ci, cim, zi, zim
-    double precision :: epsti_r, epstim_r, muti_r, mutim_r, kappa1, kappa2, kappa3, eo, mo, zo, co
-    double precision :: df1, df2, df3, psi1, psi2, psi3, b1, b2, dx, dy, chi2_e_r, chi2_m_r, chi3_e_r, chi3_m_r
+    double precision :: eta1i, eta1im, eta2i, eta2im, eta3i, eta3im
+    double precision :: etat1i, etat1im, etat2i, etat2im, etat3i, etat3im
+    double precision :: q1i, q1im, q2i, q2im, q3i, q3im
+    double precision :: ci, cim, zi, zim
+    double precision :: kappa1, kappa2, kappa3, eo, mo, zo, co
+    double precision :: df1, df2, df3, psi1, psi2, psi3, b1, b2, b3, dx, dy
     double precision :: dq1, dq2, dq3, beta1, beta2, beta3
-    common /cparam/  dx, dy, chi2_e_r, chi2_m_r, chi3_e_r, chi3_m_r, eo, mo, co, zo
+    double precision :: vac1, vac2, vac3
+    common /cparam/  dx, dy, chi2, chi3, eo, mo, co, zo, vac1, vac2, vac3
 
 !     # split the jump in q at each interface into waves
 
     do 20 i = 2-mbc, mx+mbc
-        epsi_r      = auxl(1,i  )
-        epsim_r     = auxr(1,i-1)
-        mui_r       = auxl(2,i  )
-        muim_r      = auxr(2,i-1)
-        epsti_r     = auxl(3,i  )
-        epstim_r    = auxr(3,i-1)
-        muti_r      = auxl(4,i  )
-        mutim_r     = auxr(4,i-1)
+        eta1i   = auxl(1,i  )
+        eta1im  = auxr(1,i-1)
+        eta2i   = auxl(2,i  )
+        eta2im  = auxr(2,i-1)
+        eta3i   = auxl(3,i  )
+        eta3im  = auxr(3,i-1)
+        etat1i  = auxl(4,i  )
+        etat1im = auxr(4,i-1)
+        etat2i  = auxl(5,i  )
+        etat2im = auxr(5,i-1)
+        etat3i  = auxl(6,i  )
+        etat3im = auxr(6,i-1)
 
-        q1i    = ql(1,i)
-        q1im   = qr(1,i-1)
-        q2i    = ql(2,i)
-        q2im   = qr(2,i-1)
-        q3i    = ql(3,i)
-        q3im   = qr(3,i-1)
+        q1i     = ql(1,i)
+        q1im    = qr(1,i-1)
+        q2i     = ql(2,i)
+        q2im    = qr(2,i-1)
+        q3i     = ql(3,i)
+        q3im    = qr(3,i-1)
 
 !     # calculate velocity c = 1/sqrt(eps*mu) and impedance Z = sqrt(eps/mu)
-        ci  = co 
-        cim = co
-        zi  = zo
-        zim = zo
+        ci      = co 
+        cim     = co
+        zi      = zo
+        zim     = zo
 
-        psi1 = - 0.5d0*(epsti_r*q1i + epstim_r*q1im)
-        psi2 = - 0.5d0*(epsti_r*q2i + epstim_r*q2im)
-        psi3 = - 0.5d0*(muti_r*q3i  + mutim_r*q3im )
+        psi1 = -0.5d0*(etat1i*q1i + etat1im*q1im)
+        psi2 = -0.5d0*(etat2i*q2i + etat2im*q2im)
+        psi3 = -0.5d0*(etat3i*q3i + etat3im*q3im)
 
 !     # flux difference
         
-        df1 = (q1i - q1im)/eo
-        df2 = (q2i - q2im)/eo
-        df3 = (q3i - q3im)/mo
+        df1 = (q1i - q1im)/vac1
+        df2 = (q2i - q2im)/vac2
+        df3 = (q3i - q3im)/vac3
 
-        kappa1 = 0.5d0*(epsi_r + epsim_r + 2*chi2_e_r*(q1i + q1im) + 3*chi3_e_r*((q1i + q1im)**2))
-        kappa1 = 0.5d0*(epsi_r + epsim_r + 2*chi2_e_r*(q2i + q2im) + 3*chi3_e_r*((q2i + q2im)**2))
-        kappa3 = 0.5d0*(mui_r  + muim_r  + 2*chi2_m_r*(q3i + q3im) + 3*chi3_m_r*((q3i + q3im)**2))
+        kappa1 = 0.5d0*(eta1i + eta1im + 2*chi2(1)*(q1i + q1im) + 3*chi3(1)*((q1i + q1im)**2))
+        kappa1 = 0.5d0*(eta2i + eta2im + 2*chi2(2)*(q2i + q2im) + 3*chi3(2)*((q2i + q2im)**2))
+        kappa3 = 0.5d0*(eta3i + eta3im + 2*chi2(3)*(q3i + q3im) + 3*chi3(3)*((q3i + q3im)**2))
         !   Normal & perpendicular waves
 !   ------------
         if (ixy==1) then
             dq2 = df2 - dx*psi3
-            dq3 = df3 - dx*psi2   
+            dq3 = df3 - dx*psi2
             beta1 = (-dq3+dq2*zi)/(zi+zim)
             beta2 = 0.
             beta3 = (dq3+dq2*zim)/(zi+zim)
             wave(1,1,i) = 0.
-            wave(2,1,i) = beta1 * (-zim) / kappa2
-            wave(3,1,i) = beta1 / kappa3
+            wave(2,1,i) = beta1*(-zim)/kappa2
+            wave(3,1,i) = beta1/kappa3
             wave(1,2,i) = 0.
-            wave(2,2,i) = beta3 * (zi) / kappa2
-            wave(3,2,i) = beta3 / kappa3
+            wave(2,2,i) = beta3*(zi)/kappa2
+            wave(3,2,i) = beta3/kappa3
             s(1,i) = -cim
             s(2,i) = ci 
         else
             dq1 = -df1 - dy*psi3
             dq3 = -df3 - dy*psi1
-            beta1 = (dq3+dq1*zi)/(zi+zim)
-            beta2 = 0
-            beta3 = (-dq3+dq1*zim)/(zi+zim)
-            wave(1,1,i) = beta1 * (zim) / kappa1
-            wave(2,1,i) = 0.
-            wave(3,1,i) = beta1 / kappa3
-            wave(1,2,i) = beta3 * (-zi) / kappa1
-            wave(2,2,i) = 0.
-            wave(3,2,i) = beta3 / kappa3
+            beta1 = -(dq3+dq1*zi)/(zi+zim)
+            beta2 = 0.d0
+            beta3 = (dq3-dq1*zim)/(zi+zim)
+            wave(1,1,i) = beta1*(zim)/kappa1
+            wave(2,1,i) = 0.d0
+            wave(3,1,i) = beta1/kappa3
+            wave(1,2,i) = beta3*(-zi)/kappa1
+            wave(2,2,i) = 0.d0
+            wave(3,2,i) = beta3/kappa3
             s(1,i) = -cim
             s(2,i) = ci 
             !if (beta1.gt.1.e-10) then
