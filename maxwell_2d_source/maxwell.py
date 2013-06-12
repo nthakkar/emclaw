@@ -21,8 +21,8 @@ zo = np.sqrt(eo/mo)
 mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index and etas
-eta = np.ones([3])
-bkg_n = np.ones([2])
+eta      = np.ones([3])
+bkg_n    = np.ones([2])
 
 bkg_n[0] = np.sqrt(eta[0]*eta[2])
 bkg_n[1] = np.sqrt(eta[1]*eta[2])
@@ -107,9 +107,9 @@ else:
 
 ddx = (x_upper-x_lower)/mx
 ddy = (y_upper-y_lower)/my
-ddt = dt=0.90/(co*np.sqrt(1.0/(ddx**2)+1.0/(ddy**2)))
-max_steps = 250000
-t_final = (x_upper-x_lower)/v
+ddt = dt=0.50/(co*np.sqrt(1.0/(ddx**2)+1.0/(ddy**2)))
+max_steps = 1000000
+t_final = 1e-13#(x_upper-x_lower)/v
 
 
 # -------- GLOBAL FUNCTION DEFINITIONS --------------
@@ -130,7 +130,7 @@ def etar(t,X,Y):
          3: mu_t
     """
     y,x = np.meshgrid(Y,X)
-    eta = np.zeros( [6,len(X),len(Y)], order='F')
+    eta_out = np.zeros( [6,len(X),len(Y)], order='F')
 
     if mat_shape=='gaussian1dx':
 
@@ -149,44 +149,44 @@ def etar(t,X,Y):
         u_eta2_t = 2*((rip_velocity[0,1]*u_x_eta2)/(rip_sigma[0,1]**2) + (rip_velocity[1,1]*u_y_eta2)/(rip_sigma[1,1]**2))
         u_eta3_t = 2*((rip_velocity[0,2]*u_x_eta3)/(rip_sigma[0,2]**2) + (rip_velocity[1,2]*u_y_eta3)/(rip_sigma[1,2]**2))
 
-        eta[0,:,:] = delta_eta[0]*np.exp(-u_eta1) + eta[0]
-        eta[1,:,:] = delta_eta[1]*np.exp(-u_eta2) + eta[1]
-        eta[2,:,:] = delta_eta[2]*np.exp(-u_eta3) + eta[2]
+        eta_out[0,:,:] = delta_eta[0]*np.exp(-u_eta1) + eta[0]
+        eta_out[1,:,:] = delta_eta[1]*np.exp(-u_eta2) + eta[1]
+        eta_out[2,:,:] = delta_eta[2]*np.exp(-u_eta3) + eta[2]
         
-        eta[3,:,:] = u_eta1_t*delta_eta[0]*np.exp(-u_eta1)
-        eta[4,:,:] = u_eta2_t*delta_eta[1]*np.exp(-u_eta2)
-        eta[5,:,:] = u_eta3_t*delta_eta[2]*np.exp(-u_eta3)
+        eta_out[3,:,:] = u_eta1_t*delta_eta[0]*np.exp(-u_eta1)
+        eta_out[4,:,:] = u_eta2_t*delta_eta[1]*np.exp(-u_eta2)
+        eta_out[5,:,:] = u_eta3_t*delta_eta[2]*np.exp(-u_eta3)
     elif mat_shape=='homogeneous':
-        eta[0,:,:] = eta[0]
-        eta[1,:,:] = eta[1]
-        eta[2,:,:] = eta[2]
+        eta_out[0,:,:] = eta[0]
+        eta_out[1,:,:] = eta[1]
+        eta_out[2,:,:] = eta[2]
     elif mat_shape=='interfacex':
-        eta[0,:,:] = 1*(x<x_change) + 4*(x>=x_change)
-        eta[1,:,:] = 1*(x<x_change) + 4*(x>=x_change)
-        eta[2,:,:] = 1*(x<x_change) + 4*(x>=x_change)
+        eta_out[0,:,:] = 1*(x<x_change) + 4*(x>=x_change)
+        eta_out[1,:,:] = 1*(x<x_change) + 4*(x>=x_change)
+        eta_out[2,:,:] = 1*(x<x_change) + 4*(x>=x_change)
     elif mat_shape=='interfacey':
-        eta[0,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
-        eta[1,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
-        eta[2,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
+        eta_out[0,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
+        eta_out[1,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
+        eta_out[2,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
     elif mat_shape=='multilayer':
         for n in range(0,N_layers):
             yi = n*tlp
             for m in range(0,n_layers):
                 if m==0:
-                    eta[0,:,:] = layers[m,0]*(yi<y)*(y<=yi+layers[m,3])
-                    eta[1,:,:] = layers[m,1]*(yi<y)*(y<=yi+layers[m,3])
-                    eta[2,:,:] = layers[m,2]*(yi<y)*(y<=yi+layers[m,3])
+                    eta_out[0,:,:] = layers[m,0]*(yi<y)*(y<=yi+layers[m,3])
+                    eta_out[1,:,:] = layers[m,1]*(yi<y)*(y<=yi+layers[m,3])
+                    eta_out[2,:,:] = layers[m,2]*(yi<y)*(y<=yi+layers[m,3])
                 else:
-                    eta[0,:,:] = layers[m,0]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
-                    eta[1,:,:] = layers[m,1]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
-                    eta[2,:,:] = layers[m,2]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
+                    eta_out[0,:,:] = layers[m,0]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
+                    eta_out[1,:,:] = layers[m,1]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
+                    eta_out[2,:,:] = layers[m,2]*(yi+layers[m-1,3]<y)*(y<=yi+layers[m,3])
 
 
-        eta[0,:,:] = layers[0,0]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,4])
-        eta[1,:,:] = layers[0,1]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,4])
-        eta[2,:,:] = layers[0,2]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,4])  
+        eta_out[0,:,:] = layers[0,0]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,4])
+        eta_out[1,:,:] = layers[0,1]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,4])
+        eta_out[2,:,:] = layers[0,2]*(N_layers*tlp<y)*(y<=N_layers*tlp+layers[0,4])  
 
-    return eta
+    return eta_out
 
 def update_aux(solver,state):
     grid = state.grid
@@ -206,17 +206,17 @@ def setaux(t,x,y):
 def setaux_lower(state,dim,t,auxbc,num_ghost):
     grid = state.grid
     X = grid.x.centers_with_ghost(num_ghost)[:num_ghost]
-    Y = grid.y.centers_with_ghost(num_ghost)
+    Y = grid.y.centers_with_ghost(num_ghost)[:num_ghost]
     t = state.t
-    auxbc[:,:num_ghost,:] = etar(t,X,Y)
+    auxbc[:,:num_ghost,:num_ghost] = etar(t,X,Y)
     return auxbc
 
 def setaux_upper(state,dim,t,auxbc,num_ghost):
     grid = state.grid
     X = grid.x.centers_with_ghost(num_ghost)[-num_ghost:]
-    Y = grid.y.centers_with_ghost(num_ghost)
+    Y = grid.y.centers_with_ghost(num_ghost)[-num_ghost:]
     t = state.t
-    auxbc[:,-num_ghost:,:] = etar(t,X,Y)
+    auxbc[:,-num_ghost:,-num_ghost:] = etar(t,X,Y)
     return auxbc
 
 def scattering_bc(state,dim,t,qbc,num_ghost):
@@ -225,7 +225,7 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
     """
     grid = state.grid
     X = grid.x.centers_with_ghost(num_ghost)[:num_ghost]
-    Y = grid.y.centers_with_ghost(num_ghost)
+    Y = grid.y.centers_with_ghost(num_ghost)[:num_ghost]
     ts = state.t
     y,x = np.meshgrid(Y,X)
     t0 = 0.0
@@ -255,9 +255,9 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
         pulseshape = 0.
         harmonic = 0.
 
-    qbc[0,:num_ghost,:] = amp_q1*pulseshape*harmonic
-    qbc[1,:num_ghost,:] = amp_q2*pulseshape*harmonic
-    qbc[2,:num_ghost,:] = amp_q3*pulseshape*harmonic
+    qbc[0,:num_ghost,:num_ghost] = amp_q1*pulseshape*harmonic
+    qbc[1,:num_ghost,:num_ghost] = amp_q2*pulseshape*harmonic
+    qbc[2,:num_ghost,:num_ghost] = amp_q3*pulseshape*harmonic
 
     return qbc
 
@@ -273,11 +273,11 @@ def qinit(state):
         y,x = np.meshgrid(Y,X)
         dd1 = x_upper-x_lower
         dd2 = y_upper-y_lower
-        sdd = 7.5e-6
+        sdd = 5e-6
         r2 = (x-dd1/2.0)**2 + (y-dd2/2.0)**2
-        state.q[0,:,:] = 0.
-        state.q[1,:,:] = 0.
-        state.q[2,:,:] = np.exp(-r2/sdd**2)
+        state.q[0,:,:] = 0.0
+        state.q[1,:,:] = 1.0*np.exp(-r2/(sdd**2))
+        state.q[2,:,:] = 0.0
     else:
         state.q[0,:,:] = 0.0
         state.q[1,:,:] = 0.0
@@ -328,7 +328,7 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
 
 
 #   define number of waves (eqn) and aux (eps,mu)
-    num_qqn = 3
+    num_eqn = 3
     num_aux = 6
 
 #   abstract domain and state setup
@@ -336,7 +336,7 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
     y_dime  = pyclaw.Dimension('y',y_lower,y_upper,my)
     domain  = pyclaw.Domain([x_dime,y_dime])
     
-    state   = pyclaw.State(domain,num_qqn,num_aux)
+    state   = pyclaw.State(domain,num_eqn,num_aux)
     
     grid = state.grid
     X    = grid.x.centers
@@ -367,8 +367,8 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
     solver.user_aux_bc_upper = setaux_upper
     solver.aux_bc_lower[0] = pyclaw.BC.custom
     solver.aux_bc_upper[0] = pyclaw.BC.custom
-    solver.aux_bc_lower[1] = pyclaw.BC.wall
-    solver.aux_bc_upper[1] = pyclaw.BC.wall
+    solver.aux_bc_lower[1] = pyclaw.BC.custom
+    solver.aux_bc_upper[1] = pyclaw.BC.custom
 
 #   Initial solution
     qinit(state)

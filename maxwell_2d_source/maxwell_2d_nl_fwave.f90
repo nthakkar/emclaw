@@ -107,21 +107,21 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,n
         df2 = (q2i - q2im)/vac2
         df3 = (q3i - q3im)/vac3
 
-        kappa1 = 0.5d0*(eta1i + eta1im + 2*chi2(1)*(q1i + q1im) + 3*chi3(1)*((q1i + q1im)**2))
-        kappa1 = 0.5d0*(eta2i + eta2im + 2*chi2(2)*(q2i + q2im) + 3*chi3(2)*((q2i + q2im)**2))
-        kappa3 = 0.5d0*(eta3i + eta3im + 2*chi2(3)*(q3i + q3im) + 3*chi3(3)*((q3i + q3im)**2))
+        kappa1 = 0.5d0*(eta1i + eta1im + 2.d0*chi2(1)*(q1i + q1im) + 3.d0*chi3(1)*((q1i + q1im)**2))
+        kappa2 = 0.5d0*(eta2i + eta2im + 2.d0*chi2(2)*(q2i + q2im) + 3.d0*chi3(2)*((q2i + q2im)**2))
+        kappa3 = 0.5d0*(eta3i + eta3im + 2.d0*chi2(3)*(q3i + q3im) + 3.d0*chi3(3)*((q3i + q3im)**2))
         !   Normal & perpendicular waves
 !   ------------
         if (ixy==1) then
             dq2 = df2 - dx*psi3
             dq3 = df3 - dx*psi2
             beta1 = (-dq3+dq2*zi)/(zi+zim)
-            beta2 = 0.
+            beta2 = 0.d0
             beta3 = (dq3+dq2*zim)/(zi+zim)
-            wave(1,1,i) = 0.
+            wave(1,1,i) = 0.d0
             wave(2,1,i) = beta1*(-zim)/kappa2
             wave(3,1,i) = beta1/kappa3
-            wave(1,2,i) = 0.
+            wave(1,2,i) = 0.d0
             wave(2,2,i) = beta3*(zi)/kappa2
             wave(3,2,i) = beta3/kappa3
             s(1,i) = -cim

@@ -8,7 +8,7 @@ import numpy as np
 # ======== all definitions are in m,s,g unit system.
 n_frames = 100
 x_lower = 0.
-x_upper = 200e-6 #10e-6                   # lenght [m]
+x_upper = 50e-6 #10e-6                   # lenght [m]
 # ........ material properties ...................................
 
 # vacuum
@@ -17,11 +17,11 @@ mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
 co = 1/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'custom'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
-bkg_er = 1.5 #2.4
-bkg_mr = 1.5 #2.4
+bkg_er = 1.0 #2.4
+bkg_mr = 1.0 #2.4
 bkg_n  = np.sqrt(bkg_er*bkg_mr)
 bkg_e  = eo*bkg_er
 bkg_m  = mo*bkg_mr
@@ -66,10 +66,10 @@ if mat_shape=='multilayer':
     mlp = np.floor(tlp/1e-9)
 
 # set non-linear parameters of the material
-chi2_e      = 0.01  #1e-2
-chi3_e      = 0.001 #1e-4
-chi2_m      = 0.01  #1e-2
-chi3_m      = 0.001 #1e-4
+chi2_e      = 0.0 #0.01  #1e-2
+chi3_e      = 0.0 #0.001 #1e-4
+chi2_m      = 0.0 #0.01  #1e-2
+chi3_m      = 0.0 #0.001 #1e-4
 
 # ........ excitation - initial conditoons .......................
 ex_type  = 'off'
@@ -93,12 +93,12 @@ ex_kx = k
 if mat_shape=='multilayer':
     mx = np.floor((x_upper-x_lower)/1e-9)
 else:
-    mx = np.floor(600*(x_upper-x_lower)/alambda)
+    mx = np.floor(50*(x_upper-x_lower)/alambda)
 
 ddx = (x_upper-x_lower)/mx
 ddt = 0.4/(co*np.sqrt(1.0/(ddx**2)))
-max_steps = 250000
-t_final = (x_upper-x_lower)/v
+max_steps = 1000000
+t_final = 2e-13#(x_upper-x_lower)/v
 print ddt
 # -------- GLOBAL FUNCTION DEFINITIONS --------------
 
@@ -236,8 +236,8 @@ def qinit(state):
         grid = state.grid
         x = grid.x.centers
         dd = x_upper-x_lower
-        state.q[0,:] = 0.0
-        state.q[1,:] = np.exp(-(x-dd/2.0)**2/((5e-6)**2))*np.cos(4e6*(x-dd/2.0))
+        state.q[1,:] = 0.0
+        state.q[0,:] = 5.0*np.exp(-(x-dd/2.0)**2/((5e-6)**2))#*np.cos(4e6*(x-dd/2.0))
     else:
         state.q[0,:] = 0.0
         state.q[1,:] = 0.0
@@ -279,7 +279,7 @@ def kappa(solver,state,dt):
 
 # -------- MAIN SCRIPT --------------
 
-def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_testcos3',solver_type='sharpclaw',save_p='./_calculations',before_step=False,limiter=4,limiter_order=4):
+def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_testperiodic2',solver_type='sharpclaw',save_p='./_calculations',before_step=False,limiter=4,limiter_order=4):
 
     if use_petsc:
         import clawpack.petclaw as pyclaw
@@ -306,7 +306,7 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     import maxwell_1d_nl
     solver.rp = maxwell_1d_nl
     solver.fwave = True
-    solver.cfl_max = 0.65
+    solver.cfl_max = 0.9
     solver.cfl_desired = 0.5
     solver.dt_variable = True
     print 'setup information:'
@@ -345,8 +345,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     state.problem_data['zo'] = zo
 
     # Boundary conditions
-    solver.bc_lower[0] = pyclaw.BC.extrap
-    solver.bc_upper[0] = pyclaw.BC.extrap
+    solver.bc_lower[0] = pyclaw.BC.periodic
+    solver.bc_upper[0] = pyclaw.BC.periodic
     solver.aux_bc_lower[0]=pyclaw.BC.custom
     solver.aux_bc_upper[0]=pyclaw.BC.custom
     solver.user_bc_lower = scattering_bc
