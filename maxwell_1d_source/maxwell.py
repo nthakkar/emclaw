@@ -15,7 +15,7 @@ x_upper = 10e-6                   # lenght [m]
 # vacuum
 eo = 8.854187817e-12            # vacuum permittivity   - [F/m]
 mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
-co = 1/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
+co = 1.0/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
 mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
@@ -81,7 +81,7 @@ ex_toff  = 0.0                  # offset in time
 ex_xoff  = 0.0                  # offset in the x-direction
 omega    = 2.0*np.pi*co/alambda # frequency
 k        = 2.0*np.pi/alambda
-amp_Ey   = 0.0
+amp_Ey   = zo
 amp_Hz   = 1.0
 
 # ........ pre-calculations for wave propagation .................
@@ -239,10 +239,10 @@ def qinit(state):
         grid = state.grid
         x = grid.x.centers
         dd = x_upper-x_lower
-        state.q[0,:] = zo*np.sin(k*x)
-        state.q[1,:] = np.sin(k*x)
-        # state.q[0,:] = zo*np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
-        # state.q[1,:] = np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
+        # state.q[0,:] = zo*np.sin(k*x)
+        # state.q[1,:] = np.sin(k*x)
+        state.q[0,:] = zo*np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
+        state.q[1,:] = np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
     else:
         state.q[0,:] = 0.0
         state.q[1,:] = 0.0
@@ -318,8 +318,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     state.problem_data['zo'] = zo
 
     # Boundary conditions
-    solver.bc_lower[0] = pyclaw.BC.periodic
-    solver.bc_upper[0] = pyclaw.BC.periodic
+    solver.bc_lower[0] = pyclaw.BC.custom
+    solver.bc_upper[0] = pyclaw.BC.extrap
     solver.aux_bc_lower[0]=pyclaw.BC.custom
     solver.aux_bc_upper[0]=pyclaw.BC.custom
     solver.user_bc_lower = scattering_bc

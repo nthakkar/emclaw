@@ -1,4 +1,4 @@
-subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,num_aux)
+subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,apdq,num_aux)
 ! ===============================================================================
 !
 !   # This version outputs f-waves.
@@ -103,9 +103,9 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,n
 
 !     # flux difference
         
-        df1 = (q1i - q1im)/vac1
-        df2 = (q2i - q2im)/vac2
-        df3 = (q3i - q3im)/vac3
+        dq1 = (q1i - q1im)
+        dq2 = (q2i - q2im)
+        dq3 = (q3i - q3im)
 
         kappa1 = 0.5d0*(eta1i + eta1im + 2.d0*chi2(1)*(q1i + q1im) + 3.d0*chi3(1)*((q1i + q1im)**2))
         kappa2 = 0.5d0*(eta2i + eta2im + 2.d0*chi2(2)*(q2i + q2im) + 3.d0*chi3(2)*((q2i + q2im)**2))
@@ -113,11 +113,11 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,n
         !   Normal & perpendicular waves
 !   ------------
         if (ixy==1) then
-            dq2 = df2 - dx*psi3
-            dq3 = df3 - dx*psi2
-            beta1 = (-dq3+dq2*zi)/(zi+zim)
+            df2 = dq3/vac2 - dx*psi2
+            df3 = dq2/vac3 - dx*psi3
+            beta1 = (df3*zi - df2)/(zi+zim)
             beta2 = 0.d0
-            beta3 = (dq3+dq2*zim)/(zi+zim)
+            beta3 = (df3*zim + df2)/(zi+zim)
             wave(1,1,i) = 0.d0
             wave(2,1,i) = beta1*(-zim)/kappa2
             wave(3,1,i) = beta1/kappa3
@@ -127,11 +127,11 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,n
             s(1,i) = -cim
             s(2,i) = ci 
         else
-            dq1 = -df1 - dy*psi3
-            dq3 = -df3 - dy*psi1
-            beta1 = -(dq3+dq1*zi)/(zi+zim)
+            df1 = dq3/vac1 - dy*psi1
+            df3 = dq1/vac3 - dy*psi3
+            beta1 = -1.d0*(df1 + df3*zi)/(zi+zim)
             beta2 = 0.d0
-            beta3 = (dq3-dq1*zim)/(zi+zim)
+            beta3 = (df1 - df3*zim)/(zi+zim)
             wave(1,1,i) = beta1*(zim)/kappa1
             wave(2,1,i) = 0.d0
             wave(3,1,i) = beta1/kappa3
@@ -140,9 +140,6 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr, fwave,s,amdq,apdq,n
             wave(3,2,i) = beta3/kappa3
             s(1,i) = -cim
             s(2,i) = ci 
-            !if (beta1.gt.1.e-10) then
-            !    write(*,*) s(1,i), beta1
-            !endif 
         endif
 
     20 END DO

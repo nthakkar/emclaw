@@ -4,19 +4,19 @@
 import numpy as np
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
-n_frames = 50
+n_frames = 30
 # ....... dimensions .............................................
-x_lower = 0.0e-6
-x_upper = 50e-6                    # lenght [m]
-y_lower = 0.0e-6
-y_upper = 50.0e-6                   # notice that for multilayer this is value will be over-written
+x_lower = 0.0
+x_upper = 10e-6                    # lenght [m]
+y_lower = 0.0
+y_upper = 10.0e-6                   # notice that for multilayer this is value will be over-written
 # ........ material properties ...................................
 
 # vacuum
 eo = 8.854187817e-12            # vacuum permittivity   - [F/m]
 mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
-co = 1/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
-zo = np.sqrt(eo/mo)
+co = 1.0/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
+zo = np.sqrt(mo/eo)
 # material
 mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
@@ -99,18 +99,18 @@ ex_kvector[0] = k                   # propagation along the x-direction
 v = co/bkg_n.min()
 
 # Grid - mesh settings
-mx = np.floor(20*(x_upper-x_lower)/ex_lambda)
+mx = np.floor(50*(x_upper-x_lower)/ex_lambda)
 if mat_shape=='multilayer':
     my = np.floor((y_upper-y_lower)/1e-9)
 else:
-    my = np.floor(20*(y_upper-y_lower)/ex_lambda)
+    my = np.floor(50*(y_upper-y_lower)/ex_lambda)
 
 ddx = (x_upper-x_lower)/mx
 ddy = (y_upper-y_lower)/my
 ddt = dt=0.50/(co*np.sqrt(1.0/(ddx**2)+1.0/(ddy**2)))
 max_steps = 1000000
-t_final = 1e-13#(x_upper-x_lower)/v
-
+t_final = (x_upper-x_lower)/v
+print t_final
 
 # -------- GLOBAL FUNCTION DEFINITIONS --------------
 
@@ -193,9 +193,9 @@ def update_aux(solver,state):
     y = state.grid.y.centers
     x = state.grid.x.centers
     t = state.t
-#   oldaux = state.aux.copy(order='F')
     state.aux = setaux(t,x,y)
-#   state.q = state.q*state.aux[0:2,:,:]/oldaux[0:2,:,:]
+
+    return state
 
 #   next function might be redundant since it already exists as deltan  
 def setaux(t,x,y):
@@ -252,12 +252,12 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
         pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
         harmonic = 1.0
     elif ex_type=='off':
-        pulseshape = 0.
-        harmonic = 0.
+        pulseshape = 0.0
+        harmonic = 0.0
 
-    qbc[0,:num_ghost,:num_ghost] = amp_q1*pulseshape*harmonic
-    qbc[1,:num_ghost,:num_ghost] = amp_q2*pulseshape*harmonic
-    qbc[2,:num_ghost,:num_ghost] = amp_q3*pulseshape*harmonic
+    qbc[0,:num_ghost,:num_ghost] = 0.0
+    qbc[1,:num_ghost,:num_ghost] = zo*ex_amplitude[1]*pulseshape*harmonic
+    qbc[2,:num_ghost,:num_ghost] = ex_amplitude[1]*pulseshape*harmonic
 
     return qbc
 
@@ -273,11 +273,11 @@ def qinit(state):
         y,x = np.meshgrid(Y,X)
         dd1 = x_upper-x_lower
         dd2 = y_upper-y_lower
-        sdd = 5e-6
+        sdd = 1e-6
         r2 = (x-dd1/2.0)**2 + (y-dd2/2.0)**2
         state.q[0,:,:] = 0.0
-        state.q[1,:,:] = 1.0*np.exp(-r2/(sdd**2))
-        state.q[2,:,:] = 0.0
+        state.q[1,:,:] = zo*np.exp(-r2/(sdd**2))
+        state.q[2,:,:] = 1.0*np.exp(-r2/(sdd**2))
     else:
         state.q[0,:,:] = 0.0
         state.q[1,:,:] = 0.0
@@ -287,7 +287,7 @@ def qinit(state):
 
 # -------- MAIN SCRIPT --------------
 
-def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_test_homogeneous',solver_type='sharpclaw'):
+def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_test_homogeneous_poly4',solver_type='sharpclaw'):
 
     if use_petsc:
         import clawpack.petclaw as pyclaw
@@ -313,7 +313,7 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
     solver.rp = maxwell_2d
     solver.fwave = True
     solver.cfl_max = 1.5
-    solver.cfl_desired = 0.9
+    solver.cfl_desired = 0.4
     solver.dt_variable = True
     print 'setup information:'
     print 'v_wave=',v
@@ -360,8 +360,8 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
 #   solver.user_bc_lower = scattering_bc
     solver.bc_lower[0] = pyclaw.BC.extrap
     solver.bc_upper[0] = pyclaw.BC.extrap
-    solver.bc_lower[1] = pyclaw.BC.extrap
-    solver.bc_upper[1] = pyclaw.BC.extrap
+    solver.bc_lower[1] = pyclaw.BC.wall
+    solver.bc_upper[1] = pyclaw.BC.wall
 
     solver.user_aux_bc_lower = setaux_lower
     solver.user_aux_bc_upper = setaux_upper
