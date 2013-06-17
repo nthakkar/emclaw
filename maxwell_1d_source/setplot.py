@@ -143,6 +143,6 @@ def hfield(current_data):
     return hf
 
 def ehfields(current_data):
-    ehfi = current_data.q[0,:]**2 + current_data.q[1,:]**2
+    ehfi = np.sqrt(current_data.q[0,:]**2 + current_data.q[1,:]**2)
     return ehfi
 

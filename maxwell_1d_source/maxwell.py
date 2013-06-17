@@ -8,7 +8,7 @@ import numpy as np
 # ======== all definitions are in m,s,g unit system.
 n_frames = 100
 x_lower = 0.
-x_upper = 50e-6 #10e-6                   # lenght [m]
+x_upper = 300e-6 #10e-6                   # lenght [m]
 # ........ material properties ...................................
 
 # vacuum
@@ -17,11 +17,11 @@ mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
 co = 1/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'moving_gauss'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
-bkg_er = 1.0 #2.4
-bkg_mr = 1.0 #2.4
+bkg_er = 1.5 #2.4
+bkg_mr = 1.5 #2.4
 bkg_n  = np.sqrt(bkg_er*bkg_mr)
 bkg_e  = eo*bkg_er
 bkg_m  = mo*bkg_mr
@@ -30,13 +30,13 @@ bkg_m  = mo*bkg_mr
 x_change = (x_upper-x_lower)/2
 
 # set moving refractive index parameters
-rip_vx_e    = 0.0*co #0.0*co    # replace here the value of x
+rip_vx_e    = 0.61*co #0.0*co    # replace here the value of x
 rip_vx_m    = rip_vx_e
 
-rip_xoff_e  = 10e-6
+rip_xoff_e  = 8e-6
 rip_xoff_m  = rip_xoff_e
 
-rip_xsig_e  = 10.0e-6
+rip_xsig_e  = 5e-6
 rip_xsig_m  = rip_xsig_e
 s_x_e       = rip_xsig_e**2
 s_x_m       = rip_xsig_m**2
@@ -72,7 +72,7 @@ chi2_m      = 0.0 #0.01  #1e-2
 chi3_m      = 0.0 #0.001 #1e-4
 
 # ........ excitation - initial conditoons .......................
-ex_type  = 'off'
+ex_type  = 'plane'
 alambda  = 1e-6             # wavelength
 ex_t_sig = 1.0*alambda          # width in time (pulse only)
 ex_x_sig = 1.0*alambda          # width in the x-direction (pulse)
@@ -80,11 +80,11 @@ ex_toff  = 0.0                  # offset in time
 ex_xoff  = 0.0                  # offset in the x-direction
 omega    = 2.0*np.pi*co/alambda # frequency
 k        = 2.0*np.pi/alambda
-amp_Ey   = 1.
-amp_Hz   = 0.
+amp_Ey   = 0.0
+amp_Hz   = 1.0
 
 # ........ pre-calculations for wave propagation .................
-v_r = 1./(bkg_n-d_e)
+v_r = 1.0/(bkg_n-d_e)
 v = co*v_r
 ex_vx = v
 ex_kx = k
@@ -93,12 +93,12 @@ ex_kx = k
 if mat_shape=='multilayer':
     mx = np.floor((x_upper-x_lower)/1e-9)
 else:
-    mx = np.floor(50*(x_upper-x_lower)/alambda)
+    mx = np.floor(100*(x_upper-x_lower)/alambda)
 
 ddx = (x_upper-x_lower)/mx
 ddt = 0.4/(co*np.sqrt(1.0/(ddx**2)))
 max_steps = 1000000
-t_final = 2e-13#(x_upper-x_lower)/v
+t_final = (x_upper-x_lower)/v
 print ddt
 # -------- GLOBAL FUNCTION DEFINITIONS --------------
 
@@ -279,7 +279,7 @@ def kappa(solver,state,dt):
 
 # -------- MAIN SCRIPT --------------
 
-def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_testperiodic2',solver_type='sharpclaw',save_p='./_calculations',before_step=False,limiter=4,limiter_order=4):
+def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_testmove_n15_v061_weno5',solver_type='sharpclaw',save_p='./_calculations',before_step=True,limiter=4,limiter_order=4):
 
     if use_petsc:
         import clawpack.petclaw as pyclaw
@@ -294,9 +294,9 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     elif solver_type=='sharpclaw':
         solver=pyclaw.SharpClawSolver1D()
         solver.num_waves = 2
-        solver.weno_order = limiter_order
-        solver.lim_type = 4
-        solver.interpolation_order = 4
+        solver.weno_order = 5
+        solver.lim_type = 2
+        solver.interpolation_order = 5
 
 
     solver.dt_initial = ddt/2
@@ -306,8 +306,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     import maxwell_1d_nl
     solver.rp = maxwell_1d_nl
     solver.fwave = True
-    solver.cfl_max = 0.9
-    solver.cfl_desired = 0.5
+    solver.cfl_max = 0.55
+    solver.cfl_desired = 0.4
     solver.dt_variable = True
     print 'setup information:'
     print 'v_wave=',v
@@ -345,8 +345,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     state.problem_data['zo'] = zo
 
     # Boundary conditions
-    solver.bc_lower[0] = pyclaw.BC.periodic
-    solver.bc_upper[0] = pyclaw.BC.periodic
+    solver.bc_lower[0] = pyclaw.BC.custom
+    solver.bc_upper[0] = pyclaw.BC.extrap
     solver.aux_bc_lower[0]=pyclaw.BC.custom
     solver.aux_bc_upper[0]=pyclaw.BC.custom
     solver.user_bc_lower = scattering_bc
