@@ -6,9 +6,10 @@ import numpy as np
 
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
-n_frames = 100
+save_folder = 'test'
+n_frames = 30
 x_lower = 0.
-x_upper = 300e-6 #10e-6                   # lenght [m]
+x_upper = 10e-6                   # lenght [m]
 # ........ material properties ...................................
 
 # vacuum
@@ -17,11 +18,11 @@ mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
 co = 1/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'moving_gauss'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
-bkg_er = 1.5 #2.4
-bkg_mr = 1.5 #2.4
+bkg_er = 1.0 #2.4
+bkg_mr = 1.0 #2.4
 bkg_n  = np.sqrt(bkg_er*bkg_mr)
 bkg_e  = eo*bkg_er
 bkg_m  = mo*bkg_mr
@@ -72,7 +73,7 @@ chi2_m      = 0.0 #0.01  #1e-2
 chi3_m      = 0.0 #0.001 #1e-4
 
 # ........ excitation - initial conditoons .......................
-ex_type  = 'plane'
+ex_type  = 'off'
 alambda  = 1e-6             # wavelength
 ex_t_sig = 1.0*alambda          # width in time (pulse only)
 ex_x_sig = 1.0*alambda          # width in the x-direction (pulse)
@@ -93,7 +94,7 @@ ex_kx = k
 if mat_shape=='multilayer':
     mx = np.floor((x_upper-x_lower)/1e-9)
 else:
-    mx = np.floor(100*(x_upper-x_lower)/alambda)
+    mx = np.floor(50*(x_upper-x_lower)/alambda)
 
 ddx = (x_upper-x_lower)/mx
 ddt = 0.4/(co*np.sqrt(1.0/(ddx**2)))
@@ -178,25 +179,27 @@ def etar(t,x):
 def update_aux(solver,state):
     x = state.grid.x.centers
     t = state.t
-#   oldaux = state.aux.copy(order='F')
     state.aux = setaux(t,x)
-#   state.q = state.q*state.aux[0:2,:]/oldaux[0:2,:]
+
     return state
 
 #   next function might be redundant since it already exists as deltan  
 def setaux(t,x):
     aux = np.empty( [4,len(x)], order='F')
     aux[:,:] = etar(t,x)
+
     return aux
 
 def setaux_lower(state,dim,t,auxbc,num_ghost):
     x = state.grid.x.centers_with_ghost(num_ghost)[:num_ghost]
     auxbc[:,:num_ghost] = etar(t,x)
+
     return auxbc
 
 def setaux_upper(state,dim,t,auxbc,num_ghost):
     x = state.grid.x.centers_with_ghost(num_ghost)[-num_ghost:]
     auxbc[:,-num_ghost:] = etar(t,x)
+
     return auxbc
 
 def scattering_bc(state,dim,t,qbc,num_ghost):
@@ -218,8 +221,8 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
         pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
         harmonic = 1.0
     elif ex_type=='off':
-        pulseshape = 0.
-        harmonic = 0.   
+        pulseshape = 0.0
+        harmonic = 0.0
     
     qbc[0,:num_ghost] = amp_Ey*pulseshape*harmonic
     qbc[1,:num_ghost] = amp_Hz*pulseshape*harmonic
@@ -236,50 +239,20 @@ def qinit(state):
         grid = state.grid
         x = grid.x.centers
         dd = x_upper-x_lower
-        state.q[1,:] = 0.0
-        state.q[0,:] = 5.0*np.exp(-(x-dd/2.0)**2/((5e-6)**2))#*np.cos(4e6*(x-dd/2.0))
+        state.q[0,:] = zo*np.sin(k*x)
+        state.q[1,:] = np.sin(k*x)
+        # state.q[0,:] = zo*np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
+        # state.q[1,:] = np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
     else:
         state.q[0,:] = 0.0
         state.q[1,:] = 0.0
-
-#   state.p = np.empty( (2,len(x)), order='F')
     
     return state
 
-def psir(solver,state,dt):
-    """
-    This function calculates psi(x,y,t)
-    """
-    grid    = state.grid
-    x       = grid.x.centers_with_ghost(num_ghost)
-    ts      = state.t
-    etartim = etar(ts-dt/2,x)
-    etarti  = etar(ts+dt/2,x)
-    etart   = (etarti - etartim) / dt
-
-    return etart
-
-def kappa(solver,state,dt):
-    """
-    This function calculates the capacity function kappa
-    """
-    grid = state.grid
-    x = grid.x.centers_with_ghost(num_ghost)
-    ts = state.t
-    eta = etar(ts,x)
-    nlfields = np.empty( (2,len(x)), order='F')
-    kap = np.empty( (2,len(x)), order='F')
-    nlfields[0,:] = 2*chi2*state.q[0,:] + 3*chi3*state.q[0,:]**2
-    nlfields[0,:] = 2*chi2m*state.q[0,:] + 3*chi3m*state.q[1,:]**2
-
-    kap[0,:] = eta[0,:] + nlfields[0,:]
-    kap[1,:] = eta[1,:] + nlfields[1,:]
-
-    return kap
 
 # -------- MAIN SCRIPT --------------
 
-def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_testmove_n15_v061_weno5',solver_type='sharpclaw',save_p='./_calculations',before_step=True,limiter=4,limiter_order=4):
+def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,save_outdir=save_folder,solver_type='sharpclaw',save_p='./_calculations',before_step=True,limiter=4,limiter_order=4):
 
     if use_petsc:
         import clawpack.petclaw as pyclaw
@@ -295,8 +268,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
         solver=pyclaw.SharpClawSolver1D()
         solver.num_waves = 2
         solver.weno_order = 5
-        solver.lim_type = 2
-        solver.interpolation_order = 5
+        solver.lim_type = 4
+        solver.interpolation_order = 4
 
 
     solver.dt_initial = ddt/2
@@ -345,8 +318,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     state.problem_data['zo'] = zo
 
     # Boundary conditions
-    solver.bc_lower[0] = pyclaw.BC.custom
-    solver.bc_upper[0] = pyclaw.BC.extrap
+    solver.bc_lower[0] = pyclaw.BC.periodic
+    solver.bc_upper[0] = pyclaw.BC.periodic
     solver.aux_bc_lower[0]=pyclaw.BC.custom
     solver.aux_bc_upper[0]=pyclaw.BC.custom
     solver.user_bc_lower = scattering_bc
@@ -373,8 +346,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     
     status = claw.run()
 
-    if htmlplot:  pyclaw.plot.html_plot(outdir=save_outdir,file_format=claw.output_format)
-    if iplot:     pyclaw.plot.interactive_plot(outdir=save_outdir,file_format=claw.output_format)
+    if htmlplot:  pyclaw.plot.html_plot(outdir=save_outdir)
+    if iplot:     pyclaw.plot.interactive_plot(outdir=save_outdir)
 
     return claw
 
