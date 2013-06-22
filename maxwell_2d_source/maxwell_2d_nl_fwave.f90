@@ -47,7 +47,7 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,apdq,nu
 
     double precision :: auxl(num_aux,1-mbc:maxm+mbc)
     double precision :: auxr(num_aux,1-mbc:maxm+mbc)
-    double precision :: fwave(mwaves,meqn,1-mbc:maxm+mbc)
+    double precision :: fwave(meqn,mwaves,1-mbc:maxm+mbc)
     double precision ::    s(mwaves,1-mbc:maxm+mbc)
     double precision ::   ql(meqn,1-mbc:maxm+mbc)
     double precision ::   qr(meqn,1-mbc:maxm+mbc)
@@ -63,7 +63,7 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,apdq,nu
     double precision :: q1i, q1im, q2i, q2im, q3i, q3im
     double precision :: ci, cim, zi, zim
     double precision :: kappa1, kappa2, kappa3, eo, mo, zo, co
-    double precision :: df1, df2, df3, psi1, psi2, psi3, b1, b2, b3, dx, dy
+    double precision :: df1, df2, df3, psi1, psi2, psi3, dx, dy
     double precision :: dq1, dq2, dq3, beta1, beta2, beta3
     double precision :: vac1, vac2, vac3
     common /cparam/  dx, dy, chi2, chi3, eo, mo, co, zo, vac1, vac2, vac3
@@ -118,12 +118,12 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,apdq,nu
             beta1 = (df3*zi - df2)/(zi+zim)
             beta2 = 0.d0
             beta3 = (df3*zim + df2)/(zi+zim)
-            wave(1,1,i) = 0.d0
-            wave(2,1,i) = beta1*(-zim)/kappa2
-            wave(3,1,i) = beta1/kappa3
-            wave(1,2,i) = 0.d0
-            wave(2,2,i) = beta3*(zi)/kappa2
-            wave(3,2,i) = beta3/kappa3
+            fwave(1,1,i) = 0.d0
+            fwave(2,1,i) = beta1*(-zim)/kappa2
+            fwave(3,1,i) = beta1/kappa3
+            fwave(1,2,i) = 0.d0
+            fwave(2,2,i) = beta3*(zi)/kappa2
+            fwave(3,2,i) = beta3/kappa3
             s(1,i) = -cim
             s(2,i) = ci 
         else
@@ -132,16 +132,16 @@ subroutine rpn2(ixy,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr,fwave,s,amdq,apdq,nu
             beta1 = -1.d0*(df1 + df3*zi)/(zi+zim)
             beta2 = 0.d0
             beta3 = (df1 - df3*zim)/(zi+zim)
-            wave(1,1,i) = beta1*(zim)/kappa1
-            wave(2,1,i) = 0.d0
-            wave(3,1,i) = beta1/kappa3
-            wave(1,2,i) = beta3*(-zi)/kappa1
-            wave(2,2,i) = 0.d0
-            wave(3,2,i) = beta3/kappa3
+            fwave(1,1,i) = beta1*(zim)/kappa1
+            fwave(2,1,i) = 0.d0
+            fwave(3,1,i) = beta1/kappa3
+            fwave(1,2,i) = beta3*(-zi)/kappa1
+            fwave(2,2,i) = 0.d0
+            fwave(3,2,i) = beta3/kappa3
             s(1,i) = -cim
             s(2,i) = ci 
         endif
-
+        
     20 END DO
 
 

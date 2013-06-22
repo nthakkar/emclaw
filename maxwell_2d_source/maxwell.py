@@ -99,11 +99,11 @@ ex_kvector[0] = k                   # propagation along the x-direction
 v = co/bkg_n.min()
 
 # Grid - mesh settings
-mx = np.floor(50*(x_upper-x_lower)/ex_lambda)
+mx = np.floor(10*(x_upper-x_lower)/ex_lambda)
 if mat_shape=='multilayer':
     my = np.floor((y_upper-y_lower)/1e-9)
 else:
-    my = np.floor(50*(y_upper-y_lower)/ex_lambda)
+    my = np.floor(10*(y_upper-y_lower)/ex_lambda)
 
 ddx = (x_upper-x_lower)/mx
 ddy = (y_upper-y_lower)/my
@@ -274,7 +274,7 @@ def qinit(state):
         dd1 = x_upper-x_lower
         dd2 = y_upper-y_lower
         sdd = 1e-6
-        r2 = (x-dd1/2.0)**2 + (y-dd2/2.0)**2
+        r2 = (x-dd1/2.0)**2 #+ (y-dd2/2.0)**2
         state.q[0,:,:] = 0.0
         state.q[1,:,:] = zo*np.exp(-r2/(sdd**2))
         state.q[2,:,:] = 1.0*np.exp(-r2/(sdd**2))
@@ -343,7 +343,6 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
     Y    = grid.y.centers
     tini = state.t
     state.aux = etar(tini,X,Y)
-
     state.problem_data['dx']    = x_dime.delta
     state.problem_data['dy']    = y_dime.delta
     state.problem_data['chi2']  = chi2
@@ -360,8 +359,8 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
 #   solver.user_bc_lower = scattering_bc
     solver.bc_lower[0] = pyclaw.BC.extrap
     solver.bc_upper[0] = pyclaw.BC.extrap
-    solver.bc_lower[1] = pyclaw.BC.wall
-    solver.bc_upper[1] = pyclaw.BC.wall
+    solver.bc_lower[1] = pyclaw.BC.extrap
+    solver.bc_upper[1] = pyclaw.BC.extrap
 
     solver.user_aux_bc_lower = setaux_lower
     solver.user_aux_bc_upper = setaux_upper
@@ -383,7 +382,6 @@ def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
     claw.solution = pyclaw.Solution(state,domain)
     claw.outdir = save_outdir
     claw.write_aux_always = True
-
     status = claw.run()
 
     if htmlplot:  pyclaw.plot.html_plot(outdir=save_outdir,file_format=claw.output_format)
