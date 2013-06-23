@@ -7,7 +7,7 @@ import numpy as np
 n_frames = 30
 # ....... dimensions .............................................
 x_lower = 0.0
-x_upper = 10e-6                    # lenght [m]
+x_upper = 100.0e-6                    # lenght [m]
 y_lower = 0.0
 y_upper = 10.0e-6                   # notice that for multilayer this is value will be over-written
 # ........ material properties ...................................
@@ -82,7 +82,7 @@ ex_amplitude = np.ones([3])
 ex_kvector   = np.zeros([2])
 
 # fill arrays and set respective values
-ex_type   = 'off'
+ex_type   = 'plane'
 ex_lambda = 1e-6
 ex_sigma[0:1] = 1.0*ex_lambda
 ex_sigma[2]   = (y_upper-y_lower)/2.0
@@ -287,7 +287,7 @@ def qinit(state):
 
 # -------- MAIN SCRIPT --------------
 
-def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_test_homogeneous_poly4',solver_type='sharpclaw'):
+def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_test_plane_poly4',solver_type='sharpclaw'):
 
     if use_petsc:
         import clawpack.petclaw as pyclaw
