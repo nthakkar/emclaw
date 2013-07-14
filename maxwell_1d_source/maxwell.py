@@ -6,10 +6,10 @@ import numpy as np
 
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
-save_folder = 'test'
-n_frames = 30
+save_folder = '_output'
+n_frames = 100
 x_lower = 0.
-x_upper = 10e-6                   # lenght [m]
+x_upper = 100e-6                   # lenght [m]
 # ........ material properties ...................................
 
 # vacuum
@@ -21,8 +21,8 @@ zo = np.sqrt(mo/eo)
 mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
-bkg_er = 1.0 #2.4
-bkg_mr = 1.0 #2.4
+bkg_er = 1.5 #2.4
+bkg_mr = 1.5 #2.4
 bkg_n  = np.sqrt(bkg_er*bkg_mr)
 bkg_e  = eo*bkg_er
 bkg_m  = mo*bkg_mr
@@ -31,10 +31,10 @@ bkg_m  = mo*bkg_mr
 x_change = (x_upper-x_lower)/2
 
 # set moving refractive index parameters
-rip_vx_e    = 0.61*co #0.0*co    # replace here the value of x
+rip_vx_e    = 0.59*co #0.0*co    # replace here the value of x
 rip_vx_m    = rip_vx_e
 
-rip_xoff_e  = 8e-6
+rip_xoff_e  = 15e-6
 rip_xoff_m  = rip_xoff_e
 
 rip_xsig_e  = 5e-6
@@ -73,10 +73,10 @@ chi2_m      = 0.0 #0.01  #1e-2
 chi3_m      = 0.0 #0.001 #1e-4
 
 # ........ excitation - initial conditoons .......................
-ex_type  = 'off'
+ex_type  = 'plane'
 alambda  = 1e-6             # wavelength
-ex_t_sig = 1.0*alambda          # width in time (pulse only)
-ex_x_sig = 1.0*alambda          # width in the x-direction (pulse)
+ex_t_sig = 4.0e-14#1.0*alambda          # width in time (pulse only)
+ex_x_sig = 2.0*alambda          # width in the x-direction (pulse)
 ex_toff  = 0.0                  # offset in time
 ex_xoff  = 0.0                  # offset in the x-direction
 omega    = 2.0*np.pi*co/alambda # frequency
@@ -209,18 +209,22 @@ def scattering_bc(state,dim,t,qbc,num_ghost):
     grid = state.grid
     x = grid.x.centers_with_ghost(num_ghost)[:num_ghost]
     ts = state.t
-    t0 = 0.05
+    t0 = 2.0e-14
 
     if ex_type=='plane':
         pulseshape = 1.0
         harmonic = np.sin(ex_kx*x - omega*ts)
-    elif ex_type=='gauss_pulse':
-        pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
-        harmonic = np.sin(ex_kx*x - omega*ts)
     elif ex_type=='simple_pulse':
-        pulseshape = np.exp(-(x - ex_xoff - ex_vx*(ts-t0))**2/ex_x_sig**2)
-        harmonic = 1.0
+        if t<=ex_t_sig:
+            pulseshape = 1.0
+            harmonic = np.sin(ex_kx*x - omega*ts)
+        else:
+            pulseshape = 0.0
+            harmonic = 0.0
     elif ex_type=='off':
+        pulseshape = 0.0
+        harmonic = 0.0
+    else:
         pulseshape = 0.0
         harmonic = 0.0
     
@@ -234,15 +238,20 @@ def qinit(state):
     """
     Initial conditions in simulation grid for electromagnetic components q
     """
-    
+    grid = state.grid
+    x = grid.x.centers
     if ex_type=='off':
-        grid = state.grid
-        x = grid.x.centers
         dd = x_upper-x_lower
         # state.q[0,:] = zo*np.sin(k*x)
         # state.q[1,:] = np.sin(k*x)
-        state.q[0,:] = zo*np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
-        state.q[1,:] = np.exp(-(x-dd/2.0)**2/((1.e-6)**2))
+        state.q[0,:] = zo*np.exp(-(x-dd/2.0)**2/((ex_x_sig)**2))
+        state.q[1,:] = np.exp(-(x-dd/2.0)**2/((ex_x_sig)**2))
+    elif ex_type=='gauss_cosine_pulse':
+        state.q[0,:] = zo*np.exp(-(x-3*ex_x_sig)**2/(ex_x_sig**2))*np.cos(ex_kx*(x-3*ex_x_sig))
+        state.q[1,:] = np.exp(-(x-3*ex_x_sig)**2/(ex_x_sig**2))*np.cos(ex_kx*(x-3*ex_x_sig))
+    elif ex_type=='gauss_pulse':
+        state.q[0,:] = zo*np.exp(-(x-3*ex_x_sig)**2/(ex_x_sig**2))
+        state.q[1,:] = np.exp(-(x-3*ex_x_sig)**2/(ex_x_sig**2))
     else:
         state.q[0,:] = 0.0
         state.q[1,:] = 0.0
