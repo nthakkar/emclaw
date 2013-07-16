@@ -4,6 +4,8 @@ import os
 import numpy as np
 from petsc4py import PETSc
 import pickle
+import glob
+import shutil
 
 def post_calculation():
         pass
@@ -38,6 +40,9 @@ class IO(object):
         num_aux = value_dict['num_aux']
         num_eqn = value_dict['num_eqn']
 
+        self.__setattr__('num_dim',num_dim)
+        self.__setattr__('num_aux',num_aux)
+        self.__setattr__('num_eqn',num_eqn)
         # now set up the PETSc viewer (assuming binary)
         viewer = PETSc.Viewer().createBinary(viewer_filename, PETSc.Viewer.Mode.READ)
         if read_aux:
@@ -52,7 +57,6 @@ class IO(object):
             lower = patch_dict['lower']
             n = patch_dict['num_cells']
             d = patch_dict['delta']
-
             from clawpack import petclaw
             dimensions = []
             for i in xrange(num_dim):
@@ -60,8 +64,17 @@ class IO(object):
                     petclaw.Dimension(names[i],lower[i],lower[i] + n[i]*d[i],n[i]))
             patch = petclaw.Patch(dimensions)
             self.__setattr__('_patch',patch)
-            self.__setattr__('x',patch.x)
-            self.__setattr__('y',patch.y)
+
+            if num_dim==1:
+                self.__setattr__('x',patch.x)
+            elif num_dim==2:
+                self.__setattr__('x',patch.x)
+                self.__setattr__('y',patch.y)
+            elif num_dim == 3:
+                self.__setattr__('y',patch.y)
+                self.__setattr__('z',path.z)
+
+
             self.__setattr__('num_cells',patch.num_cells_global)
             claw = petclaw.State(patch,num_eqn,num_aux) ##
             self.__setattr__('_claw',claw)
@@ -71,6 +84,7 @@ class IO(object):
             self._claw.gqVec.load(viewer)
             if read_aux:
                 self._claw.gauxVec.load(aux_viewer)
+                self.__setattr__('aux',self._claw.aux)
             
             self.__setattr__('q',self._claw.q)
             self.__setattr__('frame',frame)
@@ -184,14 +198,17 @@ class IO(object):
         fh.flush()
         fh.close()
 
+    def copy_files(self,src_file,dst_file):
+        pass
+
     def __init__(self,frame=0,file_prefix='claw',path='./',write_aux=False,write_p=False,read_aux=False):
 
         self.frame=frame
         self.file_prefix=file_prefix 
         self.path=path
-        self.read_aux = False
-        self.write_aux = False
-        self.write_p = False
+        self.read_aux = read_aux
+        self.write_aux = write_aux
+        self.write_p = write_p
         self.write_postprocess = False
         self.postprocess = post_calculation()
 

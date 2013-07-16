@@ -4,28 +4,33 @@ import shutil
 
 # define the src_dir and dst_dir
 src_dir         = '/Volumes/sim-tools/em-pyclaw/maxwell_1d_source'
+src_subdir      = '_plots'
+src_dir_prefix  = '_moving'
 dst_dir         = '/Users/sanromd/Dropbox/research/fullwave-time/prlx/figures'
+cp_name         = 'moving'
 respect_copied  = True
 overwrite       = False
+load_all        = True
 
 # number of frames to be copied and new name assigment if any
-frame_n = ['0006','0035','0070','0098']
+get_frames = [6,35,70,98]
 frame_s = ['a','b','c','d']
 
-# ................... main routine .................................................
 
-for dir_name in glob.glob(os.path.join(src_dir, '_moving*')):
-    if os.path.isdir(os.path.join(dir_name,'_plots')):
+# ................... main routine .................................................
+if load_all:
+    src_dir_prefix = src_dir_prefix+'*'
+
+for dir_name in glob.glob(os.path.join(src_dir, src_dir_prefix)):
+    if os.path.isdir(os.path.join(dir_name,src_subdir)):
         head, tail =  os.path.split(dir_name)
-        tail1, tail2 =  tail.split('_moving_')
-        tail2 = 'moving_'+tail2
+        tail1, tail2 =  tail.split(src_dir_prefix)
+        tail2 = cp_name+tail2
         if respect_copied:
-            if os.path.isfile(os.path.join(dir_name,'.copied')):
-                pass
-            else:
+            if not os.path.isfile(os.path.join(dir_name,'.copied')):
                 open(os.path.join(dir_name,'.copied'),'a').close()
-                for n in range(0,4):
-                    src_name = 'frame'+frame_n[n]+'fig0.png'
+                for frame in get_frames:
+                    src_name = 'frame'+str(frame).zfill(4)+'fig0.png'
                     dst_name = tail2+'_'+frame_s[n]+'.png'
                     print src_name            
                     src_file = os.path.join(dir_name,'_plots',src_name)
