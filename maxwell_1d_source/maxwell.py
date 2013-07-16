@@ -6,10 +6,10 @@ import numpy as np
 
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
-save_folder = '_output'
+save_folder = '_moving_v061_gcpulse_s001'
 n_frames = 100
 x_lower = 0.
-x_upper = 100e-6                   # lenght [m]
+x_upper = 500e-6                   # lenght [m]
 # ........ material properties ...................................
 
 # vacuum
@@ -18,7 +18,7 @@ mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
 co = 1.0/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'moving_gauss'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
 bkg_er = 1.5 #2.4
@@ -31,13 +31,13 @@ bkg_m  = mo*bkg_mr
 x_change = (x_upper-x_lower)/2
 
 # set moving refractive index parameters
-rip_vx_e    = 0.59*co #0.0*co    # replace here the value of x
+rip_vx_e    = 0.61*co #0.0*co    # replace here the value of x
 rip_vx_m    = rip_vx_e
 
 rip_xoff_e  = 15e-6
 rip_xoff_m  = rip_xoff_e
 
-rip_xsig_e  = 5e-6
+rip_xsig_e  = .01e-6
 rip_xsig_m  = rip_xsig_e
 s_x_e       = rip_xsig_e**2
 s_x_m       = rip_xsig_m**2
@@ -73,7 +73,7 @@ chi2_m      = 0.0 #0.01  #1e-2
 chi3_m      = 0.0 #0.001 #1e-4
 
 # ........ excitation - initial conditoons .......................
-ex_type  = 'plane'
+ex_type  = 'gauss_cosine_pulse'
 alambda  = 1e-6             # wavelength
 ex_t_sig = 4.0e-14#1.0*alambda          # width in time (pulse only)
 ex_x_sig = 2.0*alambda          # width in the x-direction (pulse)
@@ -94,7 +94,7 @@ ex_kx = k
 if mat_shape=='multilayer':
     mx = np.floor((x_upper-x_lower)/1e-9)
 else:
-    mx = np.floor(50*(x_upper-x_lower)/alambda)
+    mx = np.floor(400*(x_upper-x_lower)/alambda)
 
 ddx = (x_upper-x_lower)/mx
 ddt = 0.4/(co*np.sqrt(1.0/(ddx**2)))
