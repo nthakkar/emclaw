@@ -6,10 +6,10 @@ import numpy as np
 
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
-save_folder = '_moving_v061_gcpulse_s001'
+save_folder = '_moving_v061_tanh_gpulse_s1'
 n_frames = 100
 x_lower = 0.
-x_upper = 500e-6                   # lenght [m]
+x_upper = 400e-6                   # lenght [m]
 # ........ material properties ...................................
 
 # vacuum
@@ -18,11 +18,11 @@ mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
 co = 1.0/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'moving_gauss'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'tanh'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index 
-bkg_er = 1.5 #2.4
-bkg_mr = 1.5 #2.4
+bkg_er = 1.5 #1.5 #2.4
+bkg_mr = 1.5 #1.5 #2.4
 bkg_n  = np.sqrt(bkg_er*bkg_mr)
 bkg_e  = eo*bkg_er
 bkg_m  = mo*bkg_mr
@@ -37,7 +37,7 @@ rip_vx_m    = rip_vx_e
 rip_xoff_e  = 15e-6
 rip_xoff_m  = rip_xoff_e
 
-rip_xsig_e  = .01e-6
+rip_xsig_e  = 1e-6
 rip_xsig_m  = rip_xsig_e
 s_x_e       = rip_xsig_e**2
 s_x_m       = rip_xsig_m**2
@@ -73,7 +73,7 @@ chi2_m      = 0.0 #0.01  #1e-2
 chi3_m      = 0.0 #0.001 #1e-4
 
 # ........ excitation - initial conditoons .......................
-ex_type  = 'gauss_cosine_pulse'
+ex_type  = 'gauss_pulse'
 alambda  = 1e-6             # wavelength
 ex_t_sig = 4.0e-14#1.0*alambda          # width in time (pulse only)
 ex_x_sig = 2.0*alambda          # width in the x-direction (pulse)
@@ -94,7 +94,7 @@ ex_kx = k
 if mat_shape=='multilayer':
     mx = np.floor((x_upper-x_lower)/1e-9)
 else:
-    mx = np.floor(400*(x_upper-x_lower)/alambda)
+    mx = np.floor(250*(x_upper-x_lower)/alambda)
 
 ddx = (x_upper-x_lower)/mx
 ddt = 0.4/(co*np.sqrt(1.0/(ddx**2)))
@@ -166,7 +166,17 @@ def etar(t,x):
         eta[0,:] = layers[0,0]*(N_layers*tlp<x)*(x<=N_layers*tlp+layers[0,3])
         eta[1,:] = layers[0,1]*(N_layers*tlp<x)*(x<=N_layers*tlp+layers[0,3])
         eta[2,:] = 0.0
-        eta[3,:] = 0.0  
+        eta[3,:] = 0.0 
+    elif mat_shape=='tanh':
+        #-((2 A v)/(1+Cosh[2 t v-2 x+2 xo]))
+        u_x_e = x - rip_vx_e*t - rip_xoff_e
+        u_x_m = x - rip_vx_m*t - rip_xoff_m
+        u_e_t = -2.0*(u_x_e)
+        u_m_t = -2.0*(u_x_m)
+        eta[0,:] = (d_e/2.0)*np.tanh(u_x_e) + bkg_er + (d_e/2.0)
+        eta[1,:] = (d_m/2.0)*np.tanh(u_x_m) + bkg_mr + (d_m/2.0)
+        eta[2,:] = -(d_e*rip_vx_e)/(1+np.cosh(u_e_t))
+        eta[3,:] = -(d_m*rip_vx_m)/(1+np.cosh(u_m_t))
     elif mat_shape=='custom':
     	dd = x_upper-x_lower
     	eta[0,:] = d_e*np.cos(0.3e6*(x-dd/2.0)) + bkg_er
