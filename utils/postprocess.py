@@ -300,7 +300,25 @@ class Postprocess(object):
         solution.read_aux = False
         solution.read_petsc()
         self.__setattr__('num_cells',solution.x.centers.size)
+        return self
+
+    def get_num_dim(self):
+        solution = IO()
+        solution.path = self.path
+        solution.file_prefix = self.file_prefix
+        solution.frame = 50
+        solution.read_aux = True
+        solution.read_petsc()
         self.__setattr__('num_dim',solution.num_dim)
+        if self.num_dim==1:
+            self.RefIndex1D(solution)
+        if self.num_dim==2:
+            self.RefIndex2D(solution)
+
+        self.__setattr__('cmax',self.co/self.n.min())
+        self.__setattr__('cmin',self.co/self.n.max())
+
+        return self
 
     def CalcFieldQuad(self):
         if self.get_all_frames:
@@ -323,9 +341,155 @@ class Postprocess(object):
         if self.plot_calc:
             self.PlotFieldQuad()
 
+        return self
+
     def _DeleteOldFolder(self):
         if os.path.isdir(os.path.join(self.path,self.outdir)):
             shutil.rmtree(os.path.join(self.path,self.outdir))
+
+    def Sampling(self):
+            if not hasattr(self, 'num_dim'):
+                self.__setattr__('num_dim',self.get_num_dim())
+            if self.sample_all:
+                if not hasattr(self, 'num_frames'):
+                    self.__setattr__('num_frames',self.get_num_frames())
+
+                self.q_sampled = np.zeros([len(self.sample_mode),self.num_dim+1+2*self.num_dim+1,self.num_frames])
+                self.I_sampled = np.zeros([len(self.sample_mode),2*self.num_dim+1,self.num_frames])
+                self.S_sampled = np.zeros([len(self.sample_mode),2*self.num_dim+1,self.num_frames])
+                for nframe in range(0,self.num_frames):
+                        self.PeakSampleFrame(nframe,nframe)
+            else:
+                samples = len(self.sample_frames)
+                self.q_sampled = np.zeros([len(self.sample_mode),self.num_dim+1+2*self.num_dim+1,samples])
+                self.I_sampled = np.zeros([len(self.sample_mode),2*self.num_dim+1,self.samples])
+                self.S_sampled = np.zeros([len(self.sample_mode),2*self.num_dim+1,self.samples])
+                for i,nframe in  enumerate(self.sample_frames):
+                    self.PeakSampleFrame(nframe,i)
+
+            if self.plot_sample:
+                self.PlotSampling()
+
+    def PlotSampling(self):
+        if not os.path.isdir(self.outdir):
+            os.makedirs(self.outdir)
+
+        fig_path = self.outdir
+
+        from matplotlib import pylab as plt
+
+        plt.close('all')
+        for k,mode in enumerate(self.sample_mode):
+            print 'plotting ', mode
+            plt.figure()
+            quad = self.q_sampled[k,0:3].copy()
+            quad[0] = quad[0]/1e-15
+            quad[1] = quad[1]/quad[1].max()
+            quad[2] = quad[2]/quad[2].max()
+            self.PlotPost1D(quad[0],quad[1:3],xlabel='time',ylabel='$\Psi_{1,2}$',xunits='$fs$',labels=['$\Psi_1$','$\Psi_2$'],save_name='q_sampled_'+mode+'.png')
+            del quad
+            quad = self.S_sampled[k,0:2].copy()
+            quad[0] = quad[0]/1e-15
+            self.PlotPost1D(quad[0],quad[1],xlabel='time',ylabel='$S$',xunits='$fs$',labels=['$S$'],save_name='S_sampled_'+mode+'.png')
+            del quad
+            quad = self.I_sampled[k,0:2].copy()
+            quad[0] = quad[0]/1e-15
+            self.PlotPost1D(quad[0],quad[1],xlabel='time',ylabel='$S$',xunits='$fs$',labels=['$I$'],save_name='I_sampled_'+mode+'.png')
+            del quad
+            quad = self.S_sampled[k,0:3].copy()
+            quad[0] = quad[0]
+            quad[2] = quad[2]
+            self.PlotPost1D(quad[0],quad[2],xlabel='time',ylabel='$x$',xunits='$fs$',yunits='$\mu m$',labels=['$S$'],save_name='S_position_'+mode+'.png',lp=True)
+            del quad
+            quad = self.I_sampled[k,0:3].copy()
+            quad[0] = quad[0]
+            quad[2] = quad[2]
+            self.PlotPost1D(quad[0],quad[2],xlabel='time',ylabel='$x$',xunits='$fs$',yunits='$\mu m$',labels=['$i$'],save_name='I_position_'+mode+'.png',lp=True)
+
+    def PlotPost1D(self,xdata,ydata,xlabel='$x$',ylabel='$y$',xunits='$a.u.$',yunits='$a.u.$',labels=['plot_1'],save_name='plot.png',lp=False):
+        if not os.path.isdir(self.outdir):
+            os.makedirs(self.outdir)
+
+        fig_path = self.outdir
+
+        from matplotlib import pylab as plt
+
+        plt.close('all')
+        try:
+            l,w = ydata.shape
+        except ValueError:
+            l = w = 1
+
+        plt.figure()
+
+        if lp:
+            plt.plot(xdata/1e-15,(self.cmin*xdata)/1e-6,label='$\mathscr{L}_{min}$')
+            plt.plot(xdata/1e-15,(self.cmax*xdata)/1e-6,label='$\mathscr{L}_{max}$')
+            plt.plot(xdata/1e-15,(self.co*self.vrip*xdata)/1e-6,label='$\mathscr{R}$')
+            plt.plot(xdata/1e-15,ydata/1e-6,label=labels[0])
+        else:
+            if l>1:
+                for dim in range(0,l):
+                    plt.plot(xdata,ydata[dim],label=labels[dim])
+            else:
+                plt.plot(xdata,ydata,label=labels[0])
+
+        xlabel = xlabel+'('+xunits+')'
+        ylabel = ylabel+'('+yunits+')'
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.legend(frameon=False)
+        plt.draw()
+        plt.savefig(os.path.join(fig_path,save_name),dpi=240)
+        plt.close()
+
+    def PeakSampleFrame(self,frame,n):
+        solution = IO()
+        solution.path = self.path
+        solution.file_prefix = self.file_prefix
+        solution.frame = frame
+        solution.read_petsc()
+        x = solution.x.centers.copy()
+        # print x.shape
+        for k,mode in enumerate(self.sample_mode):
+            if self.num_dim==1:
+                self.FieldIntensity1D(solution)
+                self.Poyinting1D(solution)
+                self.q_sampled[k,0,n] = solution.t
+                self.S_sampled[k,0,n] = solution.t
+                self.I_sampled[k,0,n] = solution.t
+                maxif = 0.0
+                if mode=='peak':
+                    self.q_sampled[k,1,n],self.q_sampled[k,3,n] = self.PeakSample1D(solution.q[0])
+                    self.q_sampled[k,2,n],self.q_sampled[k,4,n] = self.PeakSample1D(solution.q[1])
+                    self.I_sampled[k,1,n],self.I_sampled[k,2,n] = self.PeakSample1D(self.I)
+                    self.S_sampled[k,1,n],self.S_sampled[k,2,n] = self.PeakSample1D(self.S)
+                if mode=='width':
+                    self.q_sampled[k,1,n],self.q_sampled[k,3,n] = self.PeakWidth1D(solution.q[0],x)
+                    self.q_sampled[k,2,n],self.q_sampled[k,4,n] = self.PeakWidth1D(solution.q[1],x)
+                    self.I_sampled[k,1,n],self.I_sampled[k,2,n] = self.PeakWidth1D(self.I,x)
+                    self.S_sampled[k,1,n],self.S_sampled[k,2,n] = self.PeakWidth1D(self.S,x)
+
+    def PeakWidth1D(self,field,x):
+        # print x.size, x.shape
+        # print x[np.argwhere(field>=field.max()/2.0).flatten()]
+        xi = x[np.argwhere(field>=field.max()/2.0)].flatten().min()        
+        xf = x[np.argwhere(field>=field.max()/2.0)].flatten().max()
+        location = np.argwhere(field>=field.max()/2.0).flatten()
+        width = np.abs(xf-xi)
+
+        return width, xi
+
+    def PeakSample1D(self,field):
+        if field.max().size==1:
+            maxfield = field.max()
+        else:
+            maxfield = np.max(field.max())
+
+        location = (field==maxfield).argmax()
+
+        return maxfield, location
+
 
     def __init__(self,path='./',file_prefix='claw',get_all_frames=True,frame=0,plot=False,save_calc=True,plot_calc=True,outdir='_postcalc',clean_outdir=False):
         
@@ -337,9 +501,16 @@ class Postprocess(object):
         self.__setattr__('save_calc',save_calc)
         self.__setattr__('plot_calc',plot_calc)
         self.__setattr__('_cleanold',clean_outdir)
+        self.__setattr__('sample_frames', np.zeros([0]))
+        self.__setattr__('sample_all', True)
+        self.__setattr__('sample_mode',['peak','width'])
+        self.__setattr__('plot_sample',True)
+        self.__setattr__('co',299792458.0)
+        self.__setattr__('vrip',0.6)
         if self._cleanold:
             self._DeleteOldFolder()
         self.get_num_cells()
+        self.get_num_dim()
 
 if __name__ == "__main__":
     import sys

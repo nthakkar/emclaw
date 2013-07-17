@@ -37,15 +37,18 @@ for src_path in glob.glob(os.path.join(src_dir,src_dir_prefix)):
         if not os.path.isfile(os.path.join(src_path,'claw_aux.ptc0000')):
             shutil.copy(os.path.join(src_path,'claw_aux.ptc0001'),os.path.join(src_path,'claw_aux.ptc0000'))
         pst = Postprocess(path=src_path,clean_outdir=True)
+        pst.vrip =int(src_path.split('v0')[1].split('_')[0])/100.0
         if not src_path.find('1um')==-1:
             pst.plot_frames = [6,35,70,105,140,175,198]
             print pst.plot_frames
             pst.CalcFieldQuad()
             pst.PlotFrames()
+            pst.Sampling()
         else:
             pst.plot_frames = get_frames
             print pst.plot_frames
             pst.CalcFieldQuad()
+            pst.Sampling()
             pst.PlotFrames()
     if transfer_files:
         fig_path = os.path.join(src_path,src_subdir)
