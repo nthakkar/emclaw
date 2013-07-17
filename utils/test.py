@@ -37,7 +37,11 @@ for src_path in glob.glob(os.path.join(src_dir,src_dir_prefix)):
         if not os.path.isfile(os.path.join(src_path,'claw_aux.ptc0000')):
             shutil.copy(os.path.join(src_path,'claw_aux.ptc0001'),os.path.join(src_path,'claw_aux.ptc0000'))
         pst = Postprocess(path=src_path,clean_outdir=True)
-        pst.vrip =int(src_path.split('v0')[1].split('_')[0])/100.0
+        if src_path.find('v0')==-1:
+            pst.vrip = int(src_path[src_path.find('vm0')+3:src_path.find('vm0')+5])/100.0
+        else:
+            pst.vrip = int(src_path[src_path.find('v0')+2:src_path.find('v0')+5])/100.0
+
         if not src_path.find('1um')==-1:
             pst.plot_frames = [6,35,70,105,140,175,198]
             print pst.plot_frames

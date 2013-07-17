@@ -461,32 +461,69 @@ class Postprocess(object):
                 maxif = 0.0
                 if mode=='peak':
                     self.q_sampled[k,1,n],self.q_sampled[k,3,n] = self.PeakSample1D(solution.q[0])
+                    if self.q_sampled[k,1,n]==-99:
+                        self.q_sampled[k,1,n] = self.q_sampled[k,1,n-1]
+                        self.q_sampled[k,3,n] = self.q_sampled[k,3,n-1]
                     self.q_sampled[k,2,n],self.q_sampled[k,4,n] = self.PeakSample1D(solution.q[1])
+                    if self.q_sampled[k,2,n]==-99:
+                        self.q_sampled[k,2,n] = self.q_sampled[k,2,n-1]
+                        self.q_sampled[k,4,n] = self.q_sampled[k,4,n-1]
                     self.I_sampled[k,1,n],self.I_sampled[k,2,n] = self.PeakSample1D(self.I)
+                    if self.q_sampled[k,1,n]==-99:
+                        self.I_sampled[k,1,n] = self.I_sampled[k,1,n-1]
+                        self.I_sampled[k,2,n] = self.I_sampled[k,2,n-1]
                     self.S_sampled[k,1,n],self.S_sampled[k,2,n] = self.PeakSample1D(self.S)
+                    if self.q_sampled[k,1,n]==-99:
+                        self.S_sampled[k,1,n] = self.S_sampled[k,1,n-1]
+                        self.S_sampled[k,2,n] = self.S_sampled[k,2,n-1]
                 if mode=='width':
                     self.q_sampled[k,1,n],self.q_sampled[k,3,n] = self.PeakWidth1D(solution.q[0],x)
+                    if self.q_sampled[k,1,n]==-99:
+                        self.q_sampled[k,1,n] = self.q_sampled[k,1,n-1]
+                        self.q_sampled[k,3,n] = self.q_sampled[k,3,n-1]
                     self.q_sampled[k,2,n],self.q_sampled[k,4,n] = self.PeakWidth1D(solution.q[1],x)
+                    if self.q_sampled[k,2,n]==-99:
+                        self.q_sampled[k,2,n] = self.q_sampled[k,2,n-1]
+                        self.q_sampled[k,4,n] = self.q_sampled[k,4,n-1]
                     self.I_sampled[k,1,n],self.I_sampled[k,2,n] = self.PeakWidth1D(self.I,x)
+                    if self.q_sampled[k,1,n]==-99:
+                        self.I_sampled[k,1,n] = self.I_sampled[k,1,n-1]
+                        self.I_sampled[k,2,n] = self.I_sampled[k,2,n-1]
                     self.S_sampled[k,1,n],self.S_sampled[k,2,n] = self.PeakWidth1D(self.S,x)
+                    if self.q_sampled[k,1,n]==-99:
+                        self.S_sampled[k,1,n] = self.S_sampled[k,1,n-1]
+                        self.S_sampled[k,2,n] = self.S_sampled[k,2,n-1]
 
     def PeakWidth1D(self,field,x):
         # print x.size, x.shape
         # print x[np.argwhere(field>=field.max()/2.0).flatten()]
-        xi = x[np.argwhere(field>=field.max()/2.0)].flatten().min()        
-        xf = x[np.argwhere(field>=field.max()/2.0)].flatten().max()
-        location = np.argwhere(field>=field.max()/2.0).flatten()
-        width = np.abs(xf-xi)
+        try:
+            xi = x[np.argwhere(field>=field.max()/2.0)].flatten().min()        
+            xf = x[np.argwhere(field>=field.max()/2.0)].flatten().max()
+            location = np.argwhere(field>=field.max()/2.0).flatten()
+            width = np.abs(xf-xi)
+        except ValueError:
+            xi = -99
+            xf = -99
+            location = -99
+            width = -99
+
 
         return width, xi
 
     def PeakSample1D(self,field):
-        if field.max().size==1:
-            maxfield = field.max()
-        else:
-            maxfield = np.max(field.max())
+        try:
+            if field.max().size==1:
+                maxfield = field.max()
+            else:
+                maxfield = np.max(field.max())
 
-        location = (field==maxfield).argmax()
+            location = (field==maxfield).argmax()
+        except ValueError:
+            xi = -99
+            xf = -99
+            location = -99
+            maxfield = -99
 
         return maxfield, location
 
