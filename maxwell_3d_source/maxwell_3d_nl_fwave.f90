@@ -7,9 +7,6 @@
 
 !   # in this case eps and mu dependend on time and position,
 !   # variable coefficients
- 
-!   # auxl(i,1) holds impedance Z,
-!   # auxl(i,2) holds sound speed c,
 
 !   # Note that although there are 6 eigenvectors per direction, two 
 !   # eigenvalues are always zero and so we only need to compute 4 waves.
@@ -19,12 +16,20 @@
 !   #                               the y-direction if ixyz=2.
 !   #                               the z-direction if ixyz=3.
 
-!   # On input, ql contains the state vector at the left edge of each cell
-!   #           qr contains the state vector at the right edge of each cell
+!   # On output, fwave contains the waves as jumps in f, and
+!   #            s the speeds,
+!   #
+!   #            amdq = A^- Delta q,
+!   #            apdq = A^+ Delta q,
+!   #                   the decomposition of the flux difference minus the source term
+!   #                       f(qr(i-1)) - f(ql(i)) - psi(q,x,t)
+!   #                   into leftgoing and rightgoing parts respectively.
+!   #
 
-!   # Note that the i'th Riemann problem has left state qr(i-1,:)
-!   #                                    and right state ql(i,:)
+!   # Note that the ith Riemann problem has left state qr(:,i-1)
+!   #                                    and right state ql(:,i)
 !   # From the basic clawpack routines, this routine is called with ql = qr
+
 
     implicit none
 
@@ -243,6 +248,6 @@
 
 
     return
-    
+
     end subroutine rpn3
 
