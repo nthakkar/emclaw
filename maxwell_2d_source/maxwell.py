@@ -18,7 +18,7 @@ mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
 co = 1.0/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'homogeneous'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'epsle1'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 # background refractive index and etas
 eta      = np.ones([3])
@@ -82,7 +82,7 @@ ex_amplitude = np.ones([3])
 ex_kvector   = np.zeros([2])
 
 # fill arrays and set respective values
-ex_type   = 'plane'
+ex_type   = 'off'
 ex_lambda = 1e-6
 ex_sigma[0:1] = 1.0*ex_lambda
 ex_sigma[2]   = (y_upper-y_lower)/2.0
@@ -168,6 +168,10 @@ def etar(t,X,Y):
         eta_out[0,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
         eta_out[1,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
         eta_out[2,:,:] = 1*(y<y_change/2) + 4*(x>=y_change/2)
+    elif mat_shape=='epsle1':
+        eta_out[0,:,:] = 1.0*(x<x_change) + 0.5*(x>=x_change)*(x<=(3.0*(x_upper-x_lower)/4.0)) + 1.0*(x>(3.0*(x_upper-x_lower)/4.0))
+        eta_out[1,:,:] = 1.0*(x<x_change) + 0.5*(x>=x_change)*(x<=(3.0*(x_upper-x_lower)/4.0)) + 1.0*(x>(3.0*(x_upper-x_lower)/4.0))
+        eta_out[2,:,:] = 1.0*(x<x_change) + 0.5*(x>=x_change)*(x<=(3.0*(x_upper-x_lower)/4.0)) + 1.0*(x>(3.0*(x_upper-x_lower)/4.0))
     elif mat_shape=='multilayer':
         for n in range(0,N_layers):
             yi = n*tlp
@@ -271,7 +275,7 @@ def qinit(state):
         X = grid.x.centers
         Y = grid.y.centers
         y,x = np.meshgrid(Y,X)
-        dd1 = x_upper-x_lower
+        dd1 = (x_upper-x_lower)/5.0
         dd2 = y_upper-y_lower
         sdd = 1e-6
         r2 = (x-dd1/2.0)**2 #+ (y-dd2/2.0)**2
@@ -287,7 +291,7 @@ def qinit(state):
 
 # -------- MAIN SCRIPT --------------
 
-def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_test_plane_poly4',solver_type='sharpclaw'):
+def em2D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,use_petsc=True,save_outdir='./_test_le1',solver_type='sharpclaw'):
 
     if use_petsc:
         import clawpack.petclaw as pyclaw

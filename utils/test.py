@@ -3,7 +3,7 @@ import glob
 import shutil
 
 
-src_dir         = '/sim-tools/em-pyclaw/maxwell_1d_source'
+src_dir         = '/maxwell-gems/em-pyclaw/maxwell_1d_source'
 src_subdir      = '_postcalc'
 src_dir_prefix  = '_moving_'
 dst_dir         = '/Users/sanromd/Dropbox/research/fullwave-time/prlx/figures'
