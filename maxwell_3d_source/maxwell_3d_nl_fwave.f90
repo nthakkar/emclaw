@@ -22,7 +22,7 @@
 !   #            amdq = A^- Delta q,
 !   #            apdq = A^+ Delta q,
 !   #                   the decomposition of the flux difference minus the source term
-!   #                       f(qr(i-1)) - f(ql(i)) - psi(q,x,t)
+!   #                       f(qr(i-1)) - f(ql(i)) - psi(()q,x,t)
 !   #                   into leftgoing and rightgoing parts respectively.
 !   #
 
@@ -42,20 +42,25 @@
     double precision :: apdq(meqn,1-mbc:maxm+mbc)
     double precision :: amdq(meqn,1-mbc:maxm+mbc)
     double precision :: wave(meqn,mwaves,1-mbc:maxm+mbc)
-    double precision :: chi2(3)
-    double precision :: chi3(3)
-    integer :: i, mx, mbc, maxm, num_aux, meqn, mwaves, m, ixy
+    double precision :: chi2(6), chi3(6), vac(6)
+    double precision :: psi(6), beta(4), kappa(6), dq(6)
+    integer :: i, mx, mbc, maxm, num_aux, meqn, mwaves, m, ixyz
 
     double precision :: eta1i, eta1im, eta2i, eta2im, eta3i, eta3im
+    double precision :: eta4i, eta4im, eta5i, eta5im, eta6i, eta6im
     double precision :: etat1i, etat1im, etat2i, etat2im, etat3i, etat3im
+    double precision :: etat4i, etat4im, etat5i, etat5im, etat6i, etat6im
     double precision :: q1i, q1im, q2i, q2im, q3i, q3im
+    double precision :: q4i, q4im, q5i, q5im, q6i, q6im
     double precision :: ci, cim, zi, zim
-    double precision :: kappa1, kappa2, kappa3, eo, mo, zo, co
-    double precision :: df1, df2, df3, psi1, psi2, psi3, dx, dy
-    double precision :: dq1, dq2, dq3, beta1, beta2, beta3
-    double precision :: vac1, vac2, vac3
-    common /cparam/  dx, dy, chi2, chi3, eo, mo, co, zo, vac1, vac2, vac3
-
+!    double precision :: kappa1, kappa2, kappa3, kappa4, kappa5, kappa6 
+    double precision :: eo, mo, zo, co
+    double precision :: df1, df2, df3, df4, df5, df6
+!    double precision :: psi1, psi2, psi3, psi4, psi5, psi6
+    double precision :: dx, dy, dz
+!    double precision :: dq1, dq2, dq3, dq4, dq5, dq6
+!    double precision :: beta1, beta2, beta3, beta4
+    common /cparam/  dx, dy, dz, chi2, chi3, eo, mo, co, zo, vac
 
 !     # split the jump in q at each interface into waves
 
@@ -104,130 +109,130 @@
         zi      = zo
         zim     = zo
 
-        psi1 = -0.5d0*(etat1i*q1i + etat1im*q1im)
-        psi2 = -0.5d0*(etat2i*q2i + etat2im*q2im)
-        psi3 = -0.5d0*(etat3i*q3i + etat3im*q3im)
-        psi4 = -0.5d0*(etat4i*q4i + etat4im*q4im)
-        psi5 = -0.5d0*(etat5i*q5i + etat5im*q5im)
-        psi6 = -0.5d0*(etat6i*q6i + etat6im*q6im)        
+        psi(1) = -0.5d0*(etat1i*q1i + etat1im*q1im)
+        psi(2) = -0.5d0*(etat2i*q2i + etat2im*q2im)
+        psi(3) = -0.5d0*(etat3i*q3i + etat3im*q3im)
+        psi(4) = -0.5d0*(etat4i*q4i + etat4im*q4im)
+        psi(5) = -0.5d0*(etat5i*q5i + etat5im*q5im)
+        psi(6) = -0.5d0*(etat6i*q6i + etat6im*q6im)        
 
 !     # flux difference
         
-        dq1 = (q1i - q1im)
-        dq2 = (q2i - q2im)
-        dq3 = (q3i - q3im)
-        dq4 = (q4i - q4im)
-        dq5 = (q5i - q5im)
-        dq6 = (q6i - q6im)
+        dq(1) = (q1i - q1im)
+        dq(2) = (q2i - q2im)
+        dq(3) = (q3i - q3im)
+        dq(4) = (q4i - q4im)
+        dq(5) = (q5i - q5im)
+        dq(6) = (q6i - q6im)
 
-        kappa1 = 0.5d0*(eta1i + eta1im + 2.d0*chi2(1)*(q1i + q1im) + 3.d0*chi3(1)*((q1i + q1im)**2))
-        kappa2 = 0.5d0*(eta2i + eta2im + 2.d0*chi2(2)*(q2i + q2im) + 3.d0*chi3(2)*((q2i + q2im)**2))
-        kappa3 = 0.5d0*(eta3i + eta3im + 2.d0*chi2(3)*(q3i + q3im) + 3.d0*chi3(3)*((q3i + q3im)**2))
-        kappa4 = 0.5d0*(eta4i + eta4im + 2.d0*chi2(4)*(q4i + q4im) + 3.d0*chi3(4)*((q4i + q4im)**2))
-        kappa5 = 0.5d0*(eta5i + eta5im + 2.d0*chi2(5)*(q5i + q5im) + 3.d0*chi3(5)*((q5i + q5im)**2))
-        kappa6 = 0.5d0*(eta6i + eta6im + 2.d0*chi2(6)*(q6i + q6im) + 3.d0*chi3(6)*((q6i + q6im)**2))
+        kappa(1) = 0.5d0*(eta1i + eta1im + 2.d0*chi2(1)*(q1i + q1im) + 3.d0*chi3(1)*((q1i + q1im)**2))
+        kappa(2) = 0.5d0*(eta2i + eta2im + 2.d0*chi2(2)*(q2i + q2im) + 3.d0*chi3(2)*((q2i + q2im)**2))
+        kappa(3) = 0.5d0*(eta3i + eta3im + 2.d0*chi2(3)*(q3i + q3im) + 3.d0*chi3(3)*((q3i + q3im)**2))
+        kappa(4) = 0.5d0*(eta4i + eta4im + 2.d0*chi2(4)*(q4i + q4im) + 3.d0*chi3(4)*((q4i + q4im)**2))
+        kappa(5) = 0.5d0*(eta5i + eta5im + 2.d0*chi2(5)*(q5i + q5im) + 3.d0*chi3(5)*((q5i + q5im)**2))
+        kappa(6) = 0.5d0*(eta6i + eta6im + 2.d0*chi2(6)*(q6i + q6im) + 3.d0*chi3(6)*((q6i + q6im)**2))
 
 
         if (ixyz == 1) then
-            df2 = dq6/vac2 - dx*psi2
-            df3 = dq5/vac3 - dx*psi3
-            df5 = dq3/vac5 - dx*psi5
-            df6 = dq2/vac6 - dx*psi6
+            df2 = dq(6)/vac(2) - dx*psi(2)
+            df3 = dq(5)/vac(3) - dx*psi(3)
+            df5 = dq(3)/vac(5) - dx*psi(5)
+            df6 = dq(2)/vac(6) - dx*psi(6)
             
-            beta1 = ( df2 + df6*zi )/(zi + zim)
-            beta2 = (-df3 + df5*zi )/(zi + zim)
-            beta3 = (-df2 + df6*zim)/(zi + zim)
-            beta4 = ( df3 + df5*zim)/(zi + zim)
+            beta(1) = ( df2 + df6*zi )/(zi + zim)
+            beta(2) = (-df3 + df5*zi )/(zi + zim)
+            beta(3) = (-df2 + df6*zim)/(zi + zim)
+            beta(4) = ( df3 + df5*zim)/(zi + zim)
             
-            fwave(1,1,i)   = 0.0d0
-            fwave(2,1,i)   = beta1*(zim)/kappa2
-            fwave(3:5,1,i) = 0.0d0
-            fwave(6,1,i)   = beta1/kappa6
+            wave(1,1,i)   = 0.0d0
+            wave(2,1,i)   = beta(1)*(zim)/kappa(2)
+            wave(3:5,1,i) = 0.0d0
+            wave(6,1,i)   = beta(1)/kappa(6)
 
-            fwave(1:2,2,i) = 0.0d0
-            fwave(3,2,i)   = beta2*(-zim)/kappa2
-            fwave(4,2,i)   = 0.0d0
-            fwave(5,2,i)   = beta2/kappa5
-            fwave(6,2,i)   = 0.0d0
+            wave(1:2,2,i) = 0.0d0
+            wave(3,2,i)   = beta(2)*(-zim)/kappa(2)
+            wave(4,2,i)   = 0.0d0
+            wave(5,2,i)   = beta(2)/kappa(5)
+            wave(6,2,i)   = 0.0d0
 
-            fwave(1,3,i)   = 0.0d0
-            fwave(2,3,i)   = beta3*(-zi)/kappa2
-            fwave(3:5,3,i) = 0.0d0
-            fwave(6,3,i)   = beta3/kappa6
+            wave(1,3,i)   = 0.0d0
+            wave(2,3,i)   = beta(3)*(-zi)/kappa(2)
+            wave(3:5,3,i) = 0.0d0
+            wave(6,3,i)   = beta(3)/kappa(6)
 
-            fwave(1:2,4,i) = 0.0d0
-            fwave(3,4,i)   = beta4*(zi)/kappa2
-            fwave(4,4,i)   = 0.0d0
-            fwave(5,4,i)   = beta4/kappa5
-            fwave(6,4,i)   = 0.0d0
+            wave(1:2,4,i) = 0.0d0
+            wave(3,4,i)   = beta(4)*(zi)/kappa(2)
+            wave(4,4,i)   = 0.0d0
+            wave(5,4,i)   = beta(4)/kappa(5)
+            wave(6,4,i)   = 0.0d0
 
             s(1:2,i) = -cim
             s(3:4,i) = ci
 
         else if (ixyz == 2) then
-            df1 = dq6/vac1 - dy*psi1
-            df3 = dq4/vac3 - dy*psi3
-            df4 = dq3/vac4 - dy*psi4
-            df6 = dq1/vac6 - dy*psi6
+            df1 = dq(6)/vac(1) - dy*psi(1)
+            df3 = dq(4)/vac(3) - dy*psi(3)
+            df4 = dq(3)/vac(4) - dy*psi(4)
+            df6 = dq(1)/vac(6) - dy*psi(6)
 
-            beta1 = (-df1 + df6*zi )/(zi + zim)
-            beta2 = ( df3 + df4*zi )/(zi + zim)
-            beta3 = ( df1 + df6*zim)/(zi + zim)
-            beta4 = (-df3 + df4*zim)/(zi + zim)
+            beta(1) = (-df1 + df6*zi )/(zi + zim)
+            beta(2) = ( df3 + df4*zi )/(zi + zim)
+            beta(3) = ( df1 + df6*zim)/(zi + zim)
+            beta(4) = (-df3 + df4*zim)/(zi + zim)
 
-            fwave(1,1,i)   = beta1*(-zim)/kappa1
-            fwave(2:5,1,i) = 0.0d0
-            fwave(6,1,i)   = beta1/kappa6
+            wave(1,1,i)   = beta(1)*(-zim)/kappa(1)
+            wave(2:5,1,i) = 0.0d0
+            wave(6,1,i)   = beta(1)/kappa(6)
 
-            fwave(1:2,2,i) = 0.0d0
-            fwave(3,2,i)   = beta2*(zim)/kappa3
-            fwave(4,2,i)   = beta2/kappa4
-            fwave(5:6,2,i) = 0.0d0
+            wave(1:2,2,i) = 0.0d0
+            wave(3,2,i)   = beta(2)*(zim)/kappa(3)
+            wave(4,2,i)   = beta(2)/kappa(4)
+            wave(5:6,2,i) = 0.0d0
 
-            fwave(1,3,i)   = beta3*(zi)/kappa1
-            fwave(2:5,3,i) = 0.0d0
-            fwave(6,3,i)   = beta3/kappa6
+            wave(1,3,i)   = beta(3)*(zi)/kappa(1)
+            wave(2:5,3,i) = 0.0d0
+            wave(6,3,i)   = beta(3)/kappa(6)
 
-            fwave(1:2,4,i) = 0.0d0
-            fwave(3,4,i)   = beta4*(-zi)/kappa3
-            fwave(4,4,i)   = beta4/kappa4
-            fwave(5:6,4,i) = 0.0d0
+            wave(1:2,4,i) = 0.0d0
+            wave(3,4,i)   = beta(4)*(-zi)/kappa(3)
+            wave(4,4,i)   = beta(4)/kappa(4)
+            wave(5:6,4,i) = 0.0d0
 
             s(1:2,i) = -cim
             s(3:4,i) = ci
 
         else if (ixyz == 3) then
-            df1 = dq5/vac1 - dz*psi1
-            df2 = dq4/vac2 - dz*psi2
-            df4 = dq2/vac4 - dz*psi4
-            df5 = dq1/vac5 - dz*psi5
+            df1 = dq(5)/vac(1) - dz*psi(1)
+            df2 = dq(4)/vac(2) - dz*psi(2)
+            df4 = dq(2)/vac(4) - dz*psi(4)
+            df5 = dq(1)/vac(5) - dz*psi(5)
 
-            beta1 = ( df1 + df5*zi )/(zi + zim)
-            beta2 = (-df2 + df4*zi )/(zi + zim)
-            beta3 = (-df1 + df5*zim)/(zi + zim)
-            beta4 = ( df2 + df4*zim)/(zi + zim)
+            beta(1) = ( df1 + df5*zi )/(zi + zim)
+            beta(2) = (-df2 + df4*zi )/(zi + zim)
+            beta(3) = (-df1 + df5*zim)/(zi + zim)
+            beta(4) = ( df2 + df4*zim)/(zi + zim)
 
-            fwave(1,1,i)   = beta1*(zim)/kappa1
-            fwave(2:4,1,i) = 0.0d0
-            fwave(5,1,i)   = beta1/kappa5
-            fwave(6,1,i)   = 0.0d0
+            wave(1,1,i)   = beta(1)*(zim)/kappa(1)
+            wave(2:4,1,i) = 0.0d0
+            wave(5,1,i)   = beta(1)/kappa(5)
+            wave(6,1,i)   = 0.0d0
 
-            fwave(1,2,i)   = 0.0d0
-            fwave(2,2,i)   = beta2*(-zim)/kappa2
-            fwave(3,2,i)   = 0.0d0
-            fwave(4,2,i)   = beta2/kappa4
-            fwave(5:6,2,i) = 0.0d0
+            wave(1,2,i)   = 0.0d0
+            wave(2,2,i)   = beta(2)*(-zim)/kappa(2)
+            wave(3,2,i)   = 0.0d0
+            wave(4,2,i)   = beta(2)/kappa(4)
+            wave(5:6,2,i) = 0.0d0
 
-            fwave(1,3,i)   = beta1*(-zi)/kappa1
-            fwave(2:4,3,i) = 0.0d0
-            fwave(5,3,i)   = beta1/kappa5
-            fwave(6,3,i)   = 0.0d0
+            wave(1,3,i)   = beta(1)*(-zi)/kappa(1)
+            wave(2:4,3,i) = 0.0d0
+            wave(5,3,i)   = beta(1)/kappa(5)
+            wave(6,3,i)   = 0.0d0
 
-            fwave(1,4,i)   = 0.0d0
-            fwave(2,4,i)   = beta2*(zi)/kappa2
-            fwave(3,4,i)   = 0.0d0
-            fwave(4,4,i)   = beta2/kappa4
-            fwave(5:6,4,i) = 0.0d0
+            wave(1,4,i)   = 0.0d0
+            wave(2,4,i)   = beta(2)*(zi)/kappa(2)
+            wave(3,4,i)   = 0.0d0
+            wave(4,4,i)   = beta(2)/kappa(4)
+            wave(5:6,4,i) = 0.0d0
 
             s(1:2,i) = -cim
             s(3:4,i) = ci
@@ -237,14 +242,20 @@
     enddo
 
 
-!     # compute the leftgoing and rightgoing flux differences:
-!     # Note s(i,1) < 0   and   s(i,2) > 0.
+!   # compute the leftgoing and rightgoing fluctuations:
+!   # Note s(1:2,i) < 0   and   s(3:4,i) > 0.
 
     do 220 m=1,meqn
         do 220 i = 2-mbc, mx+mbc
-            amdq(m,i) = s(1,i)*wave(m,1,i)
-            apdq(m,i) = s(2,i)*wave(m,2,i)
+            amdq(m,i) = s(1,i)*wave(m,1,i) + s(2,i)*wave(m,2,i)
+            apdq(m,i) = s(3,i)*wave(m,3,i) + s(4,i)*wave(m,4,i)
     220 end do
+
+!    do 220 m=1,meqn
+!        do 220 i = 2-mbc, mx+mbc
+!            amdq(m,i) = fwave(m,1,i) + fwave(m,2,i)
+!            apdq(m,i) = fwave(m,3,i) + fwave(m,4,i)
+!    220 end do
 
 
     return
