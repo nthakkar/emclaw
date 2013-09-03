@@ -1,5 +1,5 @@
 !     ==================================================================
-    subroutine rpn3(ixyz,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr,num_aux,wave,s,amdq,apdq)
+    subroutine rpn3(ixyz,maxm,meqn,mwaves,mbc,mx,ql,qr,auxl,auxr,num_aux,fwave,s,amdq,apdq)
 !     ==================================================================
 
 !   # Riemann solver for Maxwell's  equations in 3d, with time-space 
@@ -41,7 +41,6 @@
     double precision ::   qr(meqn,1-mbc:maxm+mbc)
     double precision :: apdq(meqn,1-mbc:maxm+mbc)
     double precision :: amdq(meqn,1-mbc:maxm+mbc)
-    double precision :: wave(meqn,mwaves,1-mbc:maxm+mbc)
     double precision :: chi2(6), chi3(6), vac(6)
     double precision :: psi(6), beta(4), kappa(6), dq(6)
     integer :: i, mx, mbc, maxm, num_aux, meqn, mwaves, m, ixyz
@@ -144,27 +143,27 @@
             beta(3) = (-df2 + df6*zim)/(zi + zim)
             beta(4) = ( df3 + df5*zim)/(zi + zim)
             
-            wave(1,1,i)   = 0.0d0
-            wave(2,1,i)   = beta(1)*(zim)/kappa(2)
-            wave(3:5,1,i) = 0.0d0
-            wave(6,1,i)   = beta(1)/kappa(6)
+            fwave(1,1,i)   = 0.0d0
+            fwave(2,1,i)   = beta(1)*(zim)/kappa(2)
+            fwave(3:5,1,i) = 0.0d0
+            fwave(6,1,i)   = beta(1)/kappa(6)
 
-            wave(1:2,2,i) = 0.0d0
-            wave(3,2,i)   = beta(2)*(-zim)/kappa(2)
-            wave(4,2,i)   = 0.0d0
-            wave(5,2,i)   = beta(2)/kappa(5)
-            wave(6,2,i)   = 0.0d0
+            fwave(1:2,2,i) = 0.0d0
+            fwave(3,2,i)   = beta(2)*(-zim)/kappa(2)
+            fwave(4,2,i)   = 0.0d0
+            fwave(5,2,i)   = beta(2)/kappa(5)
+            fwave(6,2,i)   = 0.0d0
 
-            wave(1,3,i)   = 0.0d0
-            wave(2,3,i)   = beta(3)*(-zi)/kappa(2)
-            wave(3:5,3,i) = 0.0d0
-            wave(6,3,i)   = beta(3)/kappa(6)
+            fwave(1,3,i)   = 0.0d0
+            fwave(2,3,i)   = beta(3)*(-zi)/kappa(2)
+            fwave(3:5,3,i) = 0.0d0
+            fwave(6,3,i)   = beta(3)/kappa(6)
 
-            wave(1:2,4,i) = 0.0d0
-            wave(3,4,i)   = beta(4)*(zi)/kappa(2)
-            wave(4,4,i)   = 0.0d0
-            wave(5,4,i)   = beta(4)/kappa(5)
-            wave(6,4,i)   = 0.0d0
+            fwave(1:2,4,i) = 0.0d0
+            fwave(3,4,i)   = beta(4)*(zi)/kappa(2)
+            fwave(4,4,i)   = 0.0d0
+            fwave(5,4,i)   = beta(4)/kappa(5)
+            fwave(6,4,i)   = 0.0d0
 
             s(1:2,i) = -cim
             s(3:4,i) = ci
@@ -180,23 +179,23 @@
             beta(3) = ( df1 + df6*zim)/(zi + zim)
             beta(4) = (-df3 + df4*zim)/(zi + zim)
 
-            wave(1,1,i)   = beta(1)*(-zim)/kappa(1)
-            wave(2:5,1,i) = 0.0d0
-            wave(6,1,i)   = beta(1)/kappa(6)
+            fwave(1,1,i)   = beta(1)*(-zim)/kappa(1)
+            fwave(2:5,1,i) = 0.0d0
+            fwave(6,1,i)   = beta(1)/kappa(6)
 
-            wave(1:2,2,i) = 0.0d0
-            wave(3,2,i)   = beta(2)*(zim)/kappa(3)
-            wave(4,2,i)   = beta(2)/kappa(4)
-            wave(5:6,2,i) = 0.0d0
+            fwave(1:2,2,i) = 0.0d0
+            fwave(3,2,i)   = beta(2)*(zim)/kappa(3)
+            fwave(4,2,i)   = beta(2)/kappa(4)
+            fwave(5:6,2,i) = 0.0d0
 
-            wave(1,3,i)   = beta(3)*(zi)/kappa(1)
-            wave(2:5,3,i) = 0.0d0
-            wave(6,3,i)   = beta(3)/kappa(6)
+            fwave(1,3,i)   = beta(3)*(zi)/kappa(1)
+            fwave(2:5,3,i) = 0.0d0
+            fwave(6,3,i)   = beta(3)/kappa(6)
 
-            wave(1:2,4,i) = 0.0d0
-            wave(3,4,i)   = beta(4)*(-zi)/kappa(3)
-            wave(4,4,i)   = beta(4)/kappa(4)
-            wave(5:6,4,i) = 0.0d0
+            fwave(1:2,4,i) = 0.0d0
+            fwave(3,4,i)   = beta(4)*(-zi)/kappa(3)
+            fwave(4,4,i)   = beta(4)/kappa(4)
+            fwave(5:6,4,i) = 0.0d0
 
             s(1:2,i) = -cim
             s(3:4,i) = ci
@@ -212,27 +211,27 @@
             beta(3) = (-df1 + df5*zim)/(zi + zim)
             beta(4) = ( df2 + df4*zim)/(zi + zim)
 
-            wave(1,1,i)   = beta(1)*(zim)/kappa(1)
-            wave(2:4,1,i) = 0.0d0
-            wave(5,1,i)   = beta(1)/kappa(5)
-            wave(6,1,i)   = 0.0d0
+            fwave(1,1,i)   = beta(1)*(zim)/kappa(1)
+            fwave(2:4,1,i) = 0.0d0
+            fwave(5,1,i)   = beta(1)/kappa(5)
+            fwave(6,1,i)   = 0.0d0
 
-            wave(1,2,i)   = 0.0d0
-            wave(2,2,i)   = beta(2)*(-zim)/kappa(2)
-            wave(3,2,i)   = 0.0d0
-            wave(4,2,i)   = beta(2)/kappa(4)
-            wave(5:6,2,i) = 0.0d0
+            fwave(1,2,i)   = 0.0d0
+            fwave(2,2,i)   = beta(2)*(-zim)/kappa(2)
+            fwave(3,2,i)   = 0.0d0
+            fwave(4,2,i)   = beta(2)/kappa(4)
+            fwave(5:6,2,i) = 0.0d0
 
-            wave(1,3,i)   = beta(1)*(-zi)/kappa(1)
-            wave(2:4,3,i) = 0.0d0
-            wave(5,3,i)   = beta(1)/kappa(5)
-            wave(6,3,i)   = 0.0d0
+            fwave(1,3,i)   = beta(1)*(-zi)/kappa(1)
+            fwave(2:4,3,i) = 0.0d0
+            fwave(5,3,i)   = beta(1)/kappa(5)
+            fwave(6,3,i)   = 0.0d0
 
-            wave(1,4,i)   = 0.0d0
-            wave(2,4,i)   = beta(2)*(zi)/kappa(2)
-            wave(3,4,i)   = 0.0d0
-            wave(4,4,i)   = beta(2)/kappa(4)
-            wave(5:6,4,i) = 0.0d0
+            fwave(1,4,i)   = 0.0d0
+            fwave(2,4,i)   = beta(2)*(zi)/kappa(2)
+            fwave(3,4,i)   = 0.0d0
+            fwave(4,4,i)   = beta(2)/kappa(4)
+            fwave(5:6,4,i) = 0.0d0
 
             s(1:2,i) = -cim
             s(3:4,i) = ci
@@ -245,18 +244,12 @@
 !   # compute the leftgoing and rightgoing fluctuations:
 !   # Note s(1:2,i) < 0   and   s(3:4,i) > 0.
 
-    do 220 m=1,meqn
-        do 220 i = 2-mbc, mx+mbc
-            amdq(m,i) = s(1,i)*wave(m,1,i) + s(2,i)*wave(m,2,i)
-            apdq(m,i) = s(3,i)*wave(m,3,i) + s(4,i)*wave(m,4,i)
-    220 end do
-
-!    do 220 m=1,meqn
-!        do 220 i = 2-mbc, mx+mbc
-!            amdq(m,i) = fwave(m,1,i) + fwave(m,2,i)
-!            apdq(m,i) = fwave(m,3,i) + fwave(m,4,i)
-!    220 end do
-
+    do m=1,meqn
+        do i = 2-mbc, mx+mbc
+            amdq(m,i) = fwave(m,1,i) + fwave(m,2,i)
+            apdq(m,i) = fwave(m,3,i) + fwave(m,4,i)
+        end do
+    end do
 
     return
 
