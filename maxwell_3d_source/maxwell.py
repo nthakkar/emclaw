@@ -117,7 +117,7 @@ ddy = (y_upper-y_lower)/my
 ddz = (z_upper-z_lower)/mz
 ddt = dt=0.50/(co*np.sqrt(1.0/(ddx**2)+1.0/(ddy**2)+1.0/(ddz**2)))
 max_steps = 1000000
-t_final = (x_upper-x_lower)/v
+t_final = (x_upper-x_lower)/v 
 print t_final
 
 # -------- GLOBAL FUNCTION DEFINITIONS --------------

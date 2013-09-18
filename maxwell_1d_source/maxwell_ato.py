@@ -3,27 +3,28 @@
 #--------- non-linear em --------------------------
 
 import numpy as np
+import pylab as plt
 
 # -------- GLOBAL SCALAR DEFINITIONS -----------------------------
 # ======== all definitions are in m,s,g unit system.
 save_folder = '_test_ato_1'
 n_frames = 10
 x_lower = 0.
-x_upper = 400e-6                   # lenght [m]
+x_upper = 10e-9                   # lenght [m]
 # ........ material properties ...................................
 
 # vacuum
-eo = 8.854187817e-12            # vacuum permittivity   - [F/m]
-mo = 4e-7*np.pi                 # vacuum peremeability  - [V.s/A.m]
-co = 1.0/np.sqrt(eo*mo)           # vacuum speed of light - [m/s]
+eo = 8.854187817e-12                # vacuum permittivity   - [F/m]
+mo = 4e-7*np.pi                     # vacuum peremeability  - [V.s/A.m]
+co = 1.0/np.sqrt(eo*mo)             # vacuum speed of light - [m/s]
 zo = np.sqrt(mo/eo)
 # material
-mat_shape = 'multilayer'           # material definition: homogeneous, interface, rip (moving perturbation), multilayered
+mat_shape = 'atomic'            # material definition: homogeneous, interface, rip (moving perturbation), multilayered
 
 
 # background refractive index 
-bkg_er = 1.5 #1.5 #2.4
-bkg_mr = 1.5 #1.5 #2.4
+bkg_er = 1.0 #1.5 #2.4
+bkg_mr = 1.0 #1.5 #2.4
 bkg_n  = np.sqrt(bkg_er*bkg_mr)
 bkg_e  = eo*bkg_er
 bkg_m  = mo*bkg_mr
@@ -33,9 +34,12 @@ x_change = (x_upper-x_lower)/2
 
 # atomic refractive index characteristics
 
-a = 1.0e-10
+r_a   = 1.0e-10
+eta_a = 1.0
+
 alpha = 1.0
-lambda_alpha = alpha
+r_b   = alpha*r_a
+eta_b = 0.5
 
 # set moving refractive index parameters
 rip_vx_e    = 0.61*co #0.0*co    # replace here the value of x
@@ -62,11 +66,11 @@ layers = np.zeros([n_layers,7]) # _layer:  eps mu N t chi2e chi2m chi3e chi3m
 layers[0,0] = 1.0
 layers[0,1] = 1.0
 layers[0,2] = 11
-layers[0,3] = a
+layers[0,3] = 1.0
 layers[1,0] = 0.5
 layers[1,1] = 0.5
 layers[1,2] = layers[0,2] - 1
-layers[1,3] = alpha*a
+layers[1,3] = 1.0
 N_layers = int(np.sum(layers[:,2]))
 print N_layers, n_layers
 if mat_shape=='multilayer':
@@ -84,7 +88,7 @@ chi3_m      = 0.0 #0.001 #1e-4
 ex_type  = 'off'
 alambda  = 1e-6             # wavelength
 ex_t_sig = 4.0e-14#1.0*alambda          # width in time (pulse only)
-ex_x_sig = a#2.0*alambda          # width in the x-direction (pulse)
+ex_x_sig = 2.0*alambda          # width in the x-direction (pulse)
 ex_toff  = 0.0                  # offset in time
 ex_xoff  = 0.0                  # offset in the x-direction
 omega    = 2.0*np.pi*co/alambda # frequency
@@ -101,6 +105,8 @@ ex_kx = k
 # Grid - mesh settings
 if mat_shape=='multilayer':
     mx = np.floor((x_upper-x_lower)/.05e-10)
+elif mat_shape=='atomic':
+    mx = np.floor(20.0*(x_upper-x_lower)/(r_a+r_b))+1
 else:
     mx = np.floor(250*(x_upper-x_lower)/alambda)
 
@@ -192,6 +198,22 @@ def etar(t,x):
     	eta[1,:] = d_m*np.cos(0.3e6*(x-dd/2.0)) + bkg_mr
     	eta[2,:] = 0.0
     	eta[3,:] = 0.0
+    elif mat_shape=='atomic':
+        eta[0:1,:] = 1.0
+        beta = 1.0
+    for j,xj in enumerate(x):
+        xj = xj - ddx
+        if xj>=((beta-1)*(r_a+r_b)) and xj<=(beta*(r_a+r_b)-r_b):
+            eta[0,j] = eta_a
+            # print j,xj
+
+        if xj>(beta*(r_a+r_b)-r_b) and xj<=(beta*(r_a+r_b)):
+            eta[0,j] = eta_b
+            # print j,xj
+
+        if xj>(beta*(r_a+r_b)):
+            beta = beta+1
+            # print beta
 
     return eta
 
@@ -260,7 +282,7 @@ def qinit(state):
     grid = state.grid
     x = grid.x.centers
     if ex_type=='off':
-        dd = a/2.0#x_upper-x_lower
+        dd = (x_upper-x_lower)/2.0
         # state.q[0,:] = zo*np.sin(k*x)
         # state.q[1,:] = np.sin(k*x)
         state.q[0,:] = zo*np.exp(-(x-dd/2.0)**2/((ex_x_sig)**2))
@@ -335,6 +357,8 @@ def em1D(kernel_language='Fortran',iplot=False,htmlplot=False,use_petsc=True,sav
     tini = state.t
     state.aux = etar(tini,x)
     
+    plt.plot(state.aux[0,:])
+    plt.show()
     state.problem_data['dx'] = x_dime.delta
     state.problem_data['chi2_e_r'] = chi2_e
     state.problem_data['chi3_e_r'] = chi3_e
