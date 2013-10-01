@@ -94,8 +94,7 @@ ex_offset[:]  = (y_upper-y_lower)/2.0
 # post calculations
 omega    = 2.0*np.pi*co/ex_lambda   # frequency
 k        = 2.0*np.pi/ex_lambda      # k vector magnitude
-ex_kvector[0] = k                   # propagation along the x-direction
-ex_kvector[3] = k
+ex_kvector[0:2] = k                   # propagation along the x-direction
 
 # ........ pre-calculations for wave propagation .................
 
@@ -305,24 +304,25 @@ def em3D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
 
 
 #   Solver settings
-    if solver_type=='classic':
-        solver=pyclaw.ClawSolver2D()
-        solver.dimensional_split=False
-        solver.limiters = pyclaw.limiters.tvd.MC
-    elif solver_type=='sharpclaw':
-        solver=pyclaw.SharpClawSolver2D()
-        solver.num_waves = 4
-        solver.lim_type = 4
-        solver.interpolation_order = 4
+
+    solver=pyclaw.SharpClawSolver3D()
+    solver.num_waves = 6
+
+    solver.lim_type = 3
+    solver.interpolation_order = 5
 
     solver.dt_initial= ddt
     solver.max_steps = max_steps
+    solver.dt_variable = True
+
     import maxwell_3d
     solver.rp = maxwell_3d
+
     solver.fwave = True
+
     solver.cfl_max = 1.5
     solver.cfl_desired = 0.4
-    solver.dt_variable = True
+
 
 #   print some debug information
     if MPI.COMM_WORLD.rank==0:
@@ -336,7 +336,7 @@ def em3D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
         if MPI.COMM_WORLD.rank==0:
             print 'update aux'
 
-        solver.call_before_step_qach_stage = 1
+        solver.call_before_step_each_stage = 1
         solver.before_step = update_aux
     
 
@@ -380,11 +380,12 @@ def em3D(kernel_language='Fortran',before_step=False,iplot=False,htmlplot=False,
 
     solver.user_aux_bc_lower = setaux_lower
     solver.user_aux_bc_upper = setaux_upper
-    solver.aux_bc_lower[0] = pyclaw.BC.custom
-    solver.aux_bc_upper[0] = pyclaw.BC.custom
-    solver.aux_bc_lower[1] = pyclaw.BC.custom
-    solver.aux_bc_upper[1] = pyclaw.BC.custom
-    solver.aux_bc_lower[2] = pyclaw.BC.custom
+    solver.aux_bc_lower[0] = pyclaw.BC.wall
+    solver.aux_bc_upper[0] = pyclaw.BC.wall
+    solver.aux_bc_lower[1] = pyclaw.BC.wall
+    solver.aux_bc_upper[1] = pyclaw.BC.wall
+    solver.aux_bc_lower[2] = pyclaw.BC.wall
+    solver.aux_bc_upper[2] = pyclaw.BC.wall
 #   Initial solution
     qinit(state)
 
